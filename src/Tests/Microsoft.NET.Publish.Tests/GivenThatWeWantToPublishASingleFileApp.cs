@@ -11,7 +11,6 @@ using Microsoft.NET.TestFramework.ProjectConstruction;
 using Xunit;
 using Xunit.Abstractions;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -71,7 +70,7 @@ namespace Microsoft.NET.Publish.Tests
                 writer.Write("World!");
             }
 
-            return new PublishCommand(Log, testAsset.TestRoot);
+            return new PublishCommand(testAsset);
         }
 
         private string GetNativeDll(string baseName)
@@ -93,13 +92,12 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "SingleFileTest",
                 TargetFrameworks = "net5.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{true}");
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var cmd = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var cmd = new PublishCommand(testAsset);
 
             var singleFilePath = Path.Combine(GetPublishDirectory(cmd).FullName, $"SingleFileTest{Constants.ExeSuffix}");
             cmd.Execute(RuntimeIdentifier).Should().Pass();
@@ -149,13 +147,12 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "ClassLib",
                 TargetFrameworks = "netstandard2.0",
-                IsSdkProject = true,
                 IsExe = false,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier)
                 .Should()
@@ -173,13 +170,12 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "NetStandardExe",
                 TargetFrameworks = "netstandard2.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier, UseAppHost)
                 .Should()
@@ -197,13 +193,12 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "ConsoleApp",
                 TargetFrameworks = "netcoreapp2.2",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier)
                 .Should()
@@ -327,12 +322,11 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "SingleFileTest",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier, IncludeAllContent, IncludePdb)
@@ -385,12 +379,11 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "SingleFileTest",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier, ReadyToRun, ReadyToRunWithSymbols, IncludeAllContent, IncludePdb)
@@ -507,6 +500,47 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionTheory("16.8.0")]
+        [InlineData("net6.0")]
+        public void ILLink_analyzer_warnings_are_produced(string targetFramework)
+        {
+            var projectName = "ILLinkAnalyzerWarningsApp";
+            var testProject = CreateTestProjectWithAnalyzerWarnings(targetFramework, projectName, true);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+
+            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            publishCommand
+                .Execute(RuntimeIdentifier)
+                .Should()
+                .HaveStdOutContaining("(8,13): warning IL3000")
+                .And.HaveStdOutContaining("(9,13): warning IL3001");
+        }
+
+        private TestProject CreateTestProjectWithAnalyzerWarnings(string targetFramework, string projectName, bool isExecutable)
+        {
+            var testProject = new TestProject()
+            {
+                Name = projectName,
+                TargetFrameworks = targetFramework,
+                IsExe = isExecutable
+            };
+
+            testProject.SourceFiles[$"{projectName}.cs"] = @"
+using System.Reflection;
+class C
+{
+    static void Main()
+    {
+        var a = Assembly.LoadFrom(""/some/path/not/in/bundle"");
+        _ = a.Location;
+        _ = a.GetFiles();
+    }
+}";
+
+            testProject.AdditionalProperties["PublishSingleFile"] = "true";
+            return testProject;
+        }
+
+        [RequiresMSBuildVersionTheory("16.8.0")]
         [InlineData("netcoreapp3.0", false, IncludeDefault)]
         [InlineData("netcoreapp3.0", true, IncludeDefault)]
         [InlineData("netcoreapp3.0", false, IncludePdb)]
@@ -527,13 +561,14 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "SingleFileTest",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{selfContained}");
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var testAsset = _testAssetsManager.CreateTestProject(
+                testProject,
+                identifier: targetFramework + "_" + selfContained + "_" + bundleOption);
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier, bundleOption)
                 .Should()
@@ -559,13 +594,12 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "SingleFileTest",
                 TargetFrameworks = "net5.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{selfContained}");
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier, IncludePdb)
                 .Should()

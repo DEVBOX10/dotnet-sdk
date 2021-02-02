@@ -43,7 +43,7 @@ namespace Microsoft.NET.Publish.Tests
                                                                         new XAttribute("PrivateAssets", "All")));
                 });
 
-            var publishCommand = new PublishCommand(Log, helloWorldAsset.TestRoot);
+            var publishCommand = new PublishCommand(helloWorldAsset);
             var publishResult = publishCommand.Execute();
 
             publishResult.Should().Pass();
@@ -88,7 +88,7 @@ namespace Microsoft.NET.Publish.Tests
                                                                         new XAttribute("Publish", "false")));
                 });
 
-            var publishCommand = new PublishCommand(Log, helloWorldAsset.TestRoot);
+            var publishCommand = new PublishCommand(helloWorldAsset);
             var publishResult = publishCommand.Execute();
 
             publishResult.Should().Pass();
@@ -134,7 +134,7 @@ namespace Microsoft.NET.Publish.Tests
                                                                         new XAttribute("Publish", "true")));
                 });
 
-            var publishCommand = new PublishCommand(Log, helloWorldAsset.TestRoot);
+            var publishCommand = new PublishCommand(helloWorldAsset);
             var publishResult = publishCommand.Execute();
 
             publishResult.Should().Pass();
@@ -169,7 +169,6 @@ namespace Microsoft.NET.Publish.Tests
             var testLibraryProject = new TestProject()
             {
                 Name = "TestLibrary",
-                IsSdkProject = true,
                 TargetFrameworks = "netstandard2.0"
             };
 
@@ -178,7 +177,6 @@ namespace Microsoft.NET.Publish.Tests
             var testProject = new TestProject()
             {
                 Name = "TestApp",
-                IsSdkProject = true,
                 IsExe = true,
                 TargetFrameworks = "netcoreapp3.0"
             };
@@ -189,7 +187,7 @@ namespace Microsoft.NET.Publish.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute().Should().Pass();
         }
@@ -200,7 +198,6 @@ namespace Microsoft.NET.Publish.Tests
             var testProject = new TestProject()
             {
                 Name = "PrivateAssetsTransitive",
-                IsSdkProject = true,
                 IsExe = true,
                 TargetFrameworks = "net5.0"
             };
@@ -212,7 +209,7 @@ namespace Microsoft.NET.Publish.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
             publishCommand.Execute().Should().Pass();
 
             var publishDirectory = publishCommand.GetOutputDirectory(testProject.TargetFrameworks);

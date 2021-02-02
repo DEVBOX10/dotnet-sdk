@@ -618,7 +618,7 @@ namespace Microsoft.NET.Build.Tasks
             }
         }
 
-        private sealed class CacheWriter : IDisposable
+        internal sealed class CacheWriter : IDisposable
         {
             private const int InitialStringTableCapacity = 32;
 
@@ -663,8 +663,8 @@ namespace Microsoft.NET.Build.Tasks
                 CanWriteToCacheFile = true;
                 if (task.DesignTimeBuild)
                 {
-                    _compileTimeTarget = _lockFile.GetTarget(_targetFramework, runtimeIdentifier: null);
-                    _runtimeTarget = _lockFile.GetTarget(_targetFramework, _task.RuntimeIdentifier);
+                    _compileTimeTarget = _lockFile.GetTargetAndReturnNullIfNotFound(_targetFramework, runtimeIdentifier: null);
+                    _runtimeTarget = _lockFile.GetTargetAndReturnNullIfNotFound(_targetFramework, _task.RuntimeIdentifier);
                     if (_compileTimeTarget == null)
                     {
                         _compileTimeTarget = new LockFileTarget();
@@ -678,7 +678,7 @@ namespace Microsoft.NET.Build.Tasks
                 }
                 else
                 {
-                    _compileTimeTarget = _lockFile.GetTargetAndThrowIfNotFound(_targetFramework, runtime: null); 
+                    _compileTimeTarget = _lockFile.GetTargetAndThrowIfNotFound(_targetFramework, runtimeIdentifier: null); 
                     _runtimeTarget = _lockFile.GetTargetAndThrowIfNotFound(_targetFramework, _task.RuntimeIdentifier);
                 }
                 
@@ -1065,7 +1065,7 @@ namespace Microsoft.NET.Build.Tasks
                     LockFileTarget runtimeTarget;
                     if (_task.DesignTimeBuild)
                     {
-                        runtimeTarget = _lockFile.GetTarget(_targetFramework, runtimeIdentifier) ?? new LockFileTarget();
+                        runtimeTarget = _lockFile.GetTargetAndReturnNullIfNotFound(_targetFramework, runtimeIdentifier) ?? new LockFileTarget();
                     }
                     else
                     {
@@ -1095,7 +1095,7 @@ namespace Microsoft.NET.Build.Tasks
                 }
                 else
                 { 
-                    var targetFramework = _lockFile.GetTarget(_targetFramework, null).TargetFramework;
+                    var targetFramework = _lockFile.GetTargetAndThrowIfNotFound(_targetFramework, null).TargetFramework;
 
                     if (targetFramework.Version.Major >= 3
                         && targetFramework.Framework.Equals(".NETCoreApp", StringComparison.OrdinalIgnoreCase))
@@ -1198,7 +1198,8 @@ namespace Microsoft.NET.Build.Tasks
 
                 foreach (var library in _runtimeTarget.Libraries)
                 {
-                    if (!library.IsTransitiveProjectReference(_lockFile, ref directProjectDependencies))
+                    if (!library.IsTransitiveProjectReference(_lockFile, ref directProjectDependencies, 
+                        _lockFile.GetLockFileTargetAlias(_lockFile.GetTargetAndReturnNullIfNotFound(_targetFramework, null))))
                     {
                         continue;
                     }
@@ -1347,7 +1348,10 @@ namespace Microsoft.NET.Build.Tasks
             private void ComputePackageExclusions()
             {
                 var copyLocalPackageExclusions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var libraryLookup = _runtimeTarget.Libraries.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+                var libraryLookup = _runtimeTarget.Libraries
+                    .GroupBy(p => p.Name)
+                    .Select(g => g.First())
+                    .ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
                 // Only exclude platform packages for framework-dependent applications
                 if ((!_task.IsSelfContained || string.IsNullOrEmpty(_runtimeTarget.RuntimeIdentifier)) &&

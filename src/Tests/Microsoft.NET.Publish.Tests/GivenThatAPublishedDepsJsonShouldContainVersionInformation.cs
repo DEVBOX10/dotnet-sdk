@@ -35,7 +35,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "DepsJsonVersions",
                 TargetFrameworks = "netcoreapp2.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.PackageReferences.Add(new TestPackageReference("System.Collections.Immutable", "1.5.0-preview1-26216-02"));
@@ -51,7 +50,7 @@ namespace Microsoft.NET.Publish.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute()
                 .Should()
@@ -122,7 +121,7 @@ namespace Microsoft.NET.Publish.Tests
             }
             else
             {
-                command = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+                command = new PublishCommand(testAsset);
             }
 
             command.Execute()
@@ -200,7 +199,7 @@ static class Program
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, callingMethod: callingMethod);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute()
                 .Should()
@@ -250,7 +249,6 @@ static class Program
             {
                 Name = nameof(GetRollForwardNetCoreAppVersion),
                 TargetFrameworks = "netcoreapp2.2",
-                IsSdkProject = true,
                 IsExe = true
             };
             testProject.AdditionalProperties.Add("TargetLatestRuntimePatch", "true");

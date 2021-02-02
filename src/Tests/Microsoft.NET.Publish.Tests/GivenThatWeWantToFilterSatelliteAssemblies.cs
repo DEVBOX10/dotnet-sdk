@@ -31,7 +31,6 @@ namespace Microsoft.NET.Publish.Tests
                 Name = "PublishFilteredSatelliteAssemblies",
                 TargetFrameworks = tfm,
                 IsExe = true,
-                IsSdkProject = true
             };
 
             testProject.PackageReferences.Add(new TestPackageReference("System.Spatial", "5.8.3"));
@@ -39,7 +38,7 @@ namespace Microsoft.NET.Publish.Tests
 
             var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
             var publishResult = publishCommand.Execute();
 
             publishResult.Should().Pass();
@@ -71,14 +70,13 @@ namespace Microsoft.NET.Publish.Tests
                 Name = "PublishSatelliteAssemblies",
                 TargetFrameworks = "netcoreapp2.0",
                 IsExe = true,
-                IsSdkProject = true
             };
 
             testProject.PackageReferences.Add(new TestPackageReference("System.Spatial", "5.8.3"));
 
             var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
             var publishResult = publishCommand.Execute();
 
             publishResult.Should().Pass();

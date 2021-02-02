@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Build.Framework;
-using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.ProjectModel;
 
@@ -13,25 +12,39 @@ namespace Microsoft.NET.Build.Tasks
 {
     internal static class LockFileExtensions
     {
-        public static LockFileTarget GetTargetAndThrowIfNotFound(this LockFile lockFile, string frameworkAlias, string runtime)
+        public static LockFileTarget GetTargetAndReturnNullIfNotFound(this LockFile lockFile, string frameworkAlias, string runtimeIdentifier)
         {
-            LockFileTarget lockFileTarget = lockFile.GetTarget(frameworkAlias, runtime);
+            LockFileTarget lockFileTarget = lockFile.GetTarget(frameworkAlias, runtimeIdentifier);
+
+            if (lockFileTarget == null &&
+                lockFile.PackageSpec.TargetFrameworks.All(tfi => string.IsNullOrEmpty(tfi.TargetAlias)))
+            {
+                var nuGetFramework = NuGetUtils.ParseFrameworkName(frameworkAlias);
+                lockFileTarget = lockFile.GetTarget(nuGetFramework, runtimeIdentifier);
+            }
+
+            return lockFileTarget;
+        }
+
+        public static LockFileTarget GetTargetAndThrowIfNotFound(this LockFile lockFile, string frameworkAlias, string runtimeIdentifier)
+        {
+            LockFileTarget lockFileTarget = lockFile.GetTargetAndReturnNullIfNotFound(frameworkAlias, runtimeIdentifier);
 
             if (lockFileTarget == null)
             {
                 string frameworkString = frameworkAlias;
-                string targetMoniker = string.IsNullOrEmpty(runtime) ?
+                string targetMoniker = string.IsNullOrEmpty(runtimeIdentifier) ?
                     frameworkString :
-                    $"{frameworkString}/{runtime}";
+                    $"{frameworkString}/{runtimeIdentifier}";
 
                 string message;
-                if (string.IsNullOrEmpty(runtime))
+                if (string.IsNullOrEmpty(runtimeIdentifier))
                 {
                     message = string.Format(Strings.AssetsFileMissingTarget, lockFile.Path, targetMoniker, frameworkString);
                 }
                 else
                 {
-                    message = string.Format(Strings.AssetsFileMissingRuntimeIdentifier, lockFile.Path, targetMoniker, frameworkString, runtime);
+                    message = string.Format(Strings.AssetsFileMissingRuntimeIdentifier, lockFile.Path, targetMoniker, frameworkString, runtimeIdentifier);
                 }
 
                 throw new BuildErrorException(message);
@@ -97,30 +110,7 @@ namespace Microsoft.NET.Build.Tasks
                 .FirstOrDefault(e => e.Name.Equals(libraryName, StringComparison.OrdinalIgnoreCase));
         }
 
-        private static readonly char[] DependencySeparators = new char[] { '<', '=', '>' };
-
-        public static Dictionary<string, string> GetProjectFileDependencies(this LockFile lockFile)
-        {
-            var projectDeps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var group in lockFile.ProjectFileDependencyGroups)
-            {
-                foreach (var dep in group.Dependencies)
-                {
-                    var parts = dep.Split(DependencySeparators, StringSplitOptions.RemoveEmptyEntries);
-                    var packageName = parts[0].Trim();
-
-                    if (!projectDeps.ContainsKey(packageName))
-                    {
-                        projectDeps.Add(packageName, parts.Length == 2 ? parts[1].Trim() : null);
-                    }
-                }
-            }
-
-            return projectDeps;
-        }
-
-        public static HashSet<string> GetProjectFileDependencySet(this LockFile lockFile)
+        public static HashSet<string> GetProjectFileDependencySet(this LockFile lockFile, string frameworkAlias)
         {
             // Get package name from e.g. Microsoft.VSSDK.BuildTools >= 15.0.25604-Preview4
             static string GetPackageNameFromDependency(string dependency)
@@ -151,14 +141,24 @@ namespace Microsoft.NET.Build.Tasks
 
             foreach (var group in lockFile.ProjectFileDependencyGroups)
             {
-                foreach (string dependency in group.Dependencies)
+                var groupFrameworkAlias = GetFrameworkAliasForDependencyGroup(group);
+                if (string.IsNullOrEmpty(groupFrameworkAlias) || string.IsNullOrEmpty(frameworkAlias) || groupFrameworkAlias.Equals(frameworkAlias) ||
+                    NuGetUtils.ParseFrameworkName(groupFrameworkAlias.Split('/').First()).DotNetFrameworkName.Equals(NuGetUtils.ParseFrameworkName(frameworkAlias).DotNetFrameworkName))
                 {
-                    string packageName = GetPackageNameFromDependency(dependency);
-                    set.Add(packageName);
+                    foreach (string dependency in group.Dependencies)
+                    {
+                        string packageName = GetPackageNameFromDependency(dependency);
+                        set.Add(packageName);
+                    }
                 }
             }
 
             return set;
+        }
+
+        private static string GetFrameworkAliasForDependencyGroup(ProjectFileDependencyGroup group)
+        {
+            return group.FrameworkName;
         }
 
         public static HashSet<string> GetPlatformExclusionList(
@@ -240,7 +240,7 @@ namespace Microsoft.NET.Build.Tasks
 
         // A package is a TransitiveProjectReference if it is a project, is not directly referenced,
         // and does not contain a placeholder compile time assembly
-        public static bool IsTransitiveProjectReference(this LockFileTargetLibrary library, LockFile lockFile, ref HashSet<string> directProjectDependencies)
+        public static bool IsTransitiveProjectReference(this LockFileTargetLibrary library, LockFile lockFile, ref HashSet<string> directProjectDependencies, string frameworkAlias)
         {
             if (!library.IsProject())
             {
@@ -249,10 +249,10 @@ namespace Microsoft.NET.Build.Tasks
 
             if (directProjectDependencies == null)
             {
-                directProjectDependencies = lockFile.GetProjectFileDependencySet();
+                directProjectDependencies = lockFile.GetProjectFileDependencySet(frameworkAlias);
             }
 
-            return !directProjectDependencies.Contains(library.Name) 
+            return !directProjectDependencies.Contains(library.Name)
                 && !library.CompileTimeAssemblies.Any(f => f.IsPlaceholderFile());
         }
 

@@ -33,7 +33,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "ConsoleWithPublishProfile",
                 TargetFrameworks = tfm,
-                IsSdkProject = true,
                 ProjectSdk = "Microsoft.NET.Sdk;Microsoft.NET.Sdk.Publish",
                 IsExe = true,
             };
@@ -66,7 +65,7 @@ namespace Microsoft.NET.Publish.Tests
 </Project>
 ");
 
-            var command = new PublishCommand(Log, projectDirectory);
+            var command = new PublishCommand(testProjectInstance);
             command
                 .Execute("/p:PublishProfile=test")
                 .Should()

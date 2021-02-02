@@ -31,7 +31,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "BuildWithRid",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -135,7 +134,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "PublishWithRid",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -173,7 +171,7 @@ namespace Microsoft.NET.Publish.Tests
                     publishArgs.Add("/p:NoBuild=true");
                 }
 
-                var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.Path, testProject.Name));
+                var publishCommand = new PublishCommand(testAsset);
                 publishCommand.Execute(publishArgs.ToArray())
                     .Should()
                     .Pass();
@@ -202,7 +200,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "DuplicateRuntimeIdentifiers",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
