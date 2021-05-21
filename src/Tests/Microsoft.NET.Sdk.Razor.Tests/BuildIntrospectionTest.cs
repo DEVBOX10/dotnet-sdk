@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.NET.Sdk.Razor.Tests
 {
-    public class BuildIntrospectionTest : RazorSdkTest
+    public class BuildIntrospectionTest : AspNetSdkTest
     {
         public BuildIntrospectionTest(ITestOutputHelper log) : base(log) {}
 
@@ -22,22 +22,21 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void RazorSdk_AddsCshtmlFilesToUpToDateCheckInput()
         {
             var testAsset = "RazorSimpleMvc";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
             
             var build = new BuildCommand(projectDirectory);
             build.Execute("/t:_IntrospectUpToDateCheck")
                 .Should()
                 .Pass()
                 .And.HaveStdOutContaining($"UpToDateCheckInput: {Path.Combine("Views", "Home", "Index.cshtml")}")
-                .And.HaveStdOutContaining($"UpToDateCheckInput: {Path.Combine("Views", "_ViewStart.cshtml")}")
-                .And.HaveStdOutContaining($"UpToDateCheckBuilt: {Path.Combine("obj", "Debug", DefaultTfm, "SimpleMvc.Views.dll")}");
+                .And.HaveStdOutContaining($"UpToDateCheckInput: {Path.Combine("Views", "_ViewStart.cshtml")}");
         }
 
         [Fact]
         public void UpToDateReloadFileTypes_Default()
         {
             var testAsset = "RazorSimpleMvc";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
             
             var build = new BuildCommand(projectDirectory);
             build.Execute("/t:_IntrospectUpToDateReloadFileTypes")
@@ -50,7 +49,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void UpToDateReloadFileTypes_WithRuntimeCompilation()
         {
             var testAsset = "RazorSimpleMvc";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset)
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset)
                 .WithProjectChanges(p =>
                 {
                     var ns = p.Root.Name.Namespace;
@@ -72,7 +71,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void UpToDateReloadFileTypes_WithwWorkAroundRemoved()
         {
             var testAsset = "RazorSimpleMvc";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
             
             var build = new BuildCommand(projectDirectory);
             build.Execute("/t:_IntrospectUpToDateReloadFileTypes")
@@ -85,7 +84,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void UpToDateReloadFileTypes_WithRuntimeCompilationAndWorkaroundRemoved()
         {
             var testAsset = "RazorSimpleMvc";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset)
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset)
                 .WithProjectChanges(p =>
                 {
                     var ns = p.Root.Name.Namespace;
@@ -107,7 +106,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void IntrospectRazorSdkWatchItems()
         {
             var testAsset = "RazorComponentApp";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
 
             var build = new MSBuildCommand(Log, "_IntrospectWatchItems", projectDirectory.Path);
             build.Execute()
@@ -115,6 +114,22 @@ namespace Microsoft.NET.Sdk.Razor.Tests
                 .Pass()
                 .And.HaveStdOutContaining("Watch: Index.razor")
                 .And.HaveStdOutContaining("Watch: Index.razor.css");
+        }
+
+        [Fact]
+        public void IntrospectRazorDesignTimeTargets()
+        {
+            var expected1 = Path.Combine("Components", "App.razor");
+            var expected2 = Path.Combine("Components", "Shared", "MainLayout.razor");
+            var testAsset = "RazorComponentApp";
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
+
+            var build = new MSBuildCommand(Log, "_IntrospectRazorGenerateComponentDesignTime", projectDirectory.Path);
+            build.Execute()
+                .Should()
+                .Pass()
+                .And.HaveStdOutContaining($"RazorComponentWithTargetPath: App {expected1}")
+                .And.HaveStdOutContaining($"RazorComponentWithTargetPath: MainLayout {expected2}");
         }
     }
 }

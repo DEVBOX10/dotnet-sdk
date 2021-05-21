@@ -5,8 +5,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 using System.Text;
+using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Microsoft.Extensions.Tools.Internal
@@ -14,6 +14,7 @@ namespace Microsoft.Extensions.Tools.Internal
     internal class TestConsole : IConsole
     {
         private event ConsoleCancelEventHandler _cancelKeyPress = default!;
+
         private readonly TaskCompletionSource<bool> _cancelKeySubscribed = new TaskCompletionSource<bool>();
         private readonly TestOutputWriter _testWriter;
 
@@ -36,6 +37,7 @@ namespace Microsoft.Extensions.Tools.Internal
 
         public Task CancelKeyPressSubscribed => _cancelKeySubscribed.Task;
 
+        event Action<ConsoleKeyInfo> IConsole.KeyPressed { add { } remove { } }
         public TextWriter Error { get; }
         public TextWriter Out { get; }
         public TextReader In { get; set; } = new StringReader(string.Empty);
@@ -43,6 +45,7 @@ namespace Microsoft.Extensions.Tools.Internal
         public bool IsOutputRedirected { get; } = false;
         public bool IsErrorRedirected { get; } = false;
         public ConsoleColor ForegroundColor { get; set; }
+        public void Clear() { }
 
         public ConsoleCancelEventArgs ConsoleCancelKey()
         {

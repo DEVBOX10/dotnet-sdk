@@ -22,6 +22,7 @@ namespace Microsoft.NET.Restore.Tests
         }
 
         [Theory]
+        [InlineData("3.5")]
         [InlineData("4.7.1")]
         [InlineData("4.7.2")]
         [InlineData("4.5.1")]
@@ -36,7 +37,7 @@ namespace Microsoft.NET.Restore.Tests
                 TargetFrameworks = targetFramework,
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: version);
 
             string projectAssetsJsonPath = Path.Combine(
                 testAsset.Path,
@@ -77,7 +78,7 @@ namespace Microsoft.NET.Restore.Tests
             if (includeExplicitReference)
             {
                 // Add explicit reference to assembly packs
-                testAsset = _testAssetsManager.CreateTestProject(testProject).WithProjectChanges(project =>
+                testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: includeExplicitReference.ToString()).WithProjectChanges(project =>
                 {
                     var ns = project.Root.Name.Namespace;
                     var itemGroup = project.Root.Elements(ns + "ItemGroup").FirstOrDefault();

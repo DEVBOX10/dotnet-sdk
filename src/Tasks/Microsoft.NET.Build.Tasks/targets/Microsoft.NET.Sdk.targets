@@ -1,33 +1,19 @@
 <!--
 ***********************************************************************************************
 Microsoft.NET.Sdk.targets
-
 WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
           created a backup copy.  Incorrect changes to this file will make it
           impossible to load or build your projects from the command-line or the IDE.
-
 Copyright (c) .NET Foundation. All rights reserved.
 ***********************************************************************************************
 -->
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <PropertyGroup Condition="'$(UsingNETSdkDefaults)' != 'true'">
-    <!-- Skip import of Microsoft.NuGet.props and Microsoft.NuGet.targets -->
-    <SkipImportNuGetProps>true</SkipImportNuGetProps>
-    <SkipImportNuGetBuildTargets>true</SkipImportNuGetBuildTargets>
-  </PropertyGroup>
-
-  <!-- Workaround: https://github.com/Microsoft/msbuild/issues/1293 -->
-  <PropertyGroup Condition="'$(MSBuildRuntimeType)' == 'Core' Or '$(TargetFrameworkIdentifier)' != '.NETFramework'">
-    <GenerateResourceMSBuildArchitecture Condition=" '$(GenerateResourceMSBuildArchitecture)' == '' ">CurrentArchitecture</GenerateResourceMSBuildArchitecture>
-    <GenerateResourceMSBuildRuntime Condition=" '$(GenerateResourceMSBuildRuntime)' == '' ">CurrentRuntime</GenerateResourceMSBuildRuntime>
-  </PropertyGroup>
-
   <Import Project="Microsoft.NET.Sdk.Common.targets" />
 
   <ImportGroup>
-    <Import Project="$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolution.targets" Condition="Exists('$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolution.targets') and '$(Language)' != 'C++'" />
-    <Import Project="$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolutionStubs.targets" Condition="Exists('$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolutionStubs.targets') and '$(Language)' == 'C++'" />
+    <Import Project="$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolution.targets" Condition="Exists('$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolution.targets') and ('$(Language)' != 'C++' or '$(_EnablePackageReferencesInVCProjects)' == 'true')" />
+    <Import Project="$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolutionStubs.targets" Condition="Exists('$(MSBuildThisFileDirectory)Microsoft.PackageDependencyResolutionStubs.targets') and ('$(Language)' == 'C++' and '$(_EnablePackageReferencesInVCProjects)' != 'true')" />
   </ImportGroup>
 
   <Import Project="Microsoft.NET.Sdk.DefaultItems.targets" />
@@ -59,38 +45,23 @@ Copyright (c) .NET Foundation. All rights reserved.
     <GenerateRuntimeConfigurationFilesInputs Include="$(UserRuntimeConfig)" Condition=" Exists($(UserRuntimeConfig)) " />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(GenerateRuntimeConfigDevFile)' == ''">
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile>
+    <!-- Post-net6.0, stop generating *.runtimeconfig.dev.json files to reduce probing paths. -->
+    <!-- https://github.com/dotnet/sdk/issues/16818 -->
+    <GenerateRuntimeConfigDevFile Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '6.0'))">false</GenerateRuntimeConfigDevFile>
+  </PropertyGroup>
+
   <PropertyGroup>
     <ProjectDepsFileName Condition="'$(ProjectDepsFileName)' == ''">$(AssemblyName).deps.json</ProjectDepsFileName>
     <ProjectDepsFilePath Condition="'$(ProjectDepsFilePath)' == ''">$(TargetDir)$(ProjectDepsFileName)</ProjectDepsFilePath>
     <ProjectRuntimeConfigFileName Condition="'$(ProjectRuntimeConfigFileName)' == ''">$(AssemblyName).runtimeconfig.json</ProjectRuntimeConfigFileName>
     <ProjectRuntimeConfigFilePath Condition="'$(ProjectRuntimeConfigFilePath)' == ''">$(TargetDir)$(ProjectRuntimeConfigFileName)</ProjectRuntimeConfigFilePath>
-    <ProjectRuntimeConfigDevFilePath Condition="'$(ProjectRuntimeConfigDevFilePath)' == ''">$(TargetDir)$(AssemblyName).runtimeconfig.dev.json</ProjectRuntimeConfigDevFilePath>
+    <ProjectRuntimeConfigDevFilePath Condition="'$(ProjectRuntimeConfigDevFilePath)' == '' and $(GenerateRuntimeConfigDevFile) == 'true'">$(TargetDir)$(AssemblyName).runtimeconfig.dev.json</ProjectRuntimeConfigDevFilePath>
     <IncludeMainProjectInDepsFile Condition=" '$(IncludeMainProjectInDepsFile)' == '' ">true</IncludeMainProjectInDepsFile>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <_NativeLibraryPrefix Condition="'$(_NativeLibraryPrefix)' == '' and !$(RuntimeIdentifier.StartsWith('win'))">lib</_NativeLibraryPrefix>
-
-    <_NativeLibraryExtension Condition="'$(_NativeLibraryExtension)' == '' and $(RuntimeIdentifier.StartsWith('win'))">.dll</_NativeLibraryExtension>
-    <_NativeLibraryExtension Condition="'$(_NativeLibraryExtension)' == '' and $(RuntimeIdentifier.StartsWith('osx'))">.dylib</_NativeLibraryExtension>
-    <_NativeLibraryExtension Condition="'$(_NativeLibraryExtension)' == ''">.so</_NativeLibraryExtension>
-
-    <_NativeExecutableExtension Condition="'$(_NativeExecutableExtension)' == '' and ($(RuntimeIdentifier.StartsWith('win')) or $(DefaultAppHostRuntimeIdentifier.StartsWith('win')))">.exe</_NativeExecutableExtension>
-    <_ComHostLibraryExtension Condition="'$(_ComHostLibraryExtension)' == '' and ($(RuntimeIdentifier.StartsWith('win')) or $(DefaultAppHostRuntimeIdentifier.StartsWith('win')))">.dll</_ComHostLibraryExtension>
-    <_IjwHostLibraryExtension Condition="'$(_IjwHostLibraryExtension)' == '' and ($(RuntimeIdentifier.StartsWith('win')) or $(DefaultAppHostRuntimeIdentifier.StartsWith('win')))">.dll</_IjwHostLibraryExtension>
-
-    <_DotNetHostExecutableName>dotnet$(_NativeExecutableExtension)</_DotNetHostExecutableName>
-    <_DotNetAppHostExecutableNameWithoutExtension>apphost</_DotNetAppHostExecutableNameWithoutExtension>
-    <_DotNetAppHostExecutableName>$(_DotNetAppHostExecutableNameWithoutExtension)$(_NativeExecutableExtension)</_DotNetAppHostExecutableName>
-
-    <_DotNetSingleFileHostExecutableNameWithoutExtension>singlefilehost</_DotNetSingleFileHostExecutableNameWithoutExtension>
-    <_DotNetComHostLibraryNameWithoutExtension>comhost</_DotNetComHostLibraryNameWithoutExtension>
-    <_DotNetComHostLibraryName>$(_DotNetComHostLibraryNameWithoutExtension)$(_ComHostLibraryExtension)</_DotNetComHostLibraryName>
-    <_DotNetIjwHostLibraryNameWithoutExtension>Ijwhost</_DotNetIjwHostLibraryNameWithoutExtension>
-    <_DotNetIjwHostLibraryName>$(_DotNetIjwHostLibraryNameWithoutExtension)$(_IjwHostLibraryExtension)</_DotNetIjwHostLibraryName>
-    <_DotNetHostPolicyLibraryName>$(_NativeLibraryPrefix)hostpolicy$(_NativeLibraryExtension)</_DotNetHostPolicyLibraryName>
-    <_DotNetHostFxrLibraryName>$(_NativeLibraryPrefix)hostfxr$(_NativeLibraryExtension)</_DotNetHostFxrLibraryName>
-  </PropertyGroup>
+  <Import Project="Microsoft.NET.Sdk.Shared.targets" />
 
   <PropertyGroup>
     <_DefaultUserProfileRuntimeStorePath>$(HOME)</_DefaultUserProfileRuntimeStorePath>
@@ -113,6 +84,14 @@ Copyright (c) .NET Foundation. All rights reserved.
       Condition="'$(EmbeddedResourceUseDependentUponConvention)' == '' and
                  (('$(TargetFrameworkIdentifier)' == '.NETCoreApp' and '$(_TargetFrameworkVersionWithoutV)' >= '3.0') or
                   ('$(TargetFrameworkIdentifier)' == '.NETStandard' and '$(_TargetFrameworkVersionWithoutV)' >= '2.1'))">true</EmbeddedResourceUseDependentUponConvention>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '2.1'))">
+    <AvailablePlatforms>$(AvailablePlatforms),ARM32</AvailablePlatforms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '3.1'))">
+    <AvailablePlatforms>$(AvailablePlatforms),ARM64</AvailablePlatforms>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -146,22 +125,9 @@ Copyright (c) .NET Foundation. All rights reserved.
     <NETSdkError ResourceName="NoBuildRequested" />
   </Target>
 
-  <Target Name="_ComputePackageReferencePublish">
-    <ItemGroup>
-
-      <!-- PrivateAssets="All" means exclude from publish, unless Publish metadata is specified separately -->
-      <PackageReference Publish="false"
-                        Condition="('%(PackageReference.PrivateAssets)' == 'All') And ('%(PackageReference.Publish)' == '')"/>
-
-      <_ExcludeFromPublishPackageReference Include="@(PackageReference)"
-                                           Condition="('%(PackageReference.Publish)' == 'false')" />
-    </ItemGroup>
-  </Target>
-
   <!--
     ============================================================
                                         GenerateBuildDependencyFile
-
     Generates the $(project).deps.json file during Build
     ============================================================
     -->
@@ -260,7 +226,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         GenerateBuildRuntimeConfigurationFiles
-
     Generates the $(project).runtimeconfig.json and $(project).runtimeconfig.dev.json files during Build
     ============================================================
     -->
@@ -300,7 +265,8 @@ Copyright (c) .NET Foundation. All rights reserved.
                                        HostConfigurationOptions="@(RuntimeHostConfigurationOption)"
                                        AdditionalProbingPaths="@(AdditionalProbingPath)"
                                        IsSelfContained="$(SelfContained)"
-                                       WriteIncludedFrameworks="$(_WriteIncludedFrameworks)">
+                                       WriteIncludedFrameworks="$(_WriteIncludedFrameworks)"
+                                       GenerateRuntimeConfigDevFile="$(GenerateRuntimeConfigDevFile)">
 
     </GenerateRuntimeConfigurationFiles>
 
@@ -333,7 +299,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                                       TargetPath="$([System.IO.Path]::GetFileName($(ProjectDepsFilePath)))"
                                       CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
-    
+
     <ItemGroup Condition=" '$(GenerateRuntimeConfigurationFiles)' == 'true'">
       <AllItemsFullPathWithTargetPath Include="$(ProjectRuntimeConfigFilePath)"
                                 TargetPath="$([System.IO.Path]::GetFileName($(ProjectRuntimeConfigFilePath)))"
@@ -342,7 +308,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                                 TargetPath="$([System.IO.Path]::GetFileName($(ProjectRuntimeConfigDevFilePath)))"
                                 CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
-    
+
   </Target>
 
   <Target Name="AddDepsJsonAndRuntimeConfigToPublishItemsForReferencingProjects"
@@ -353,7 +319,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ItemGroup Condition="'$(GenerateDependencyFile)' == 'true'">
       <AllPublishItemsFullPathWithTargetPath Include="$(ProjectDepsFilePath)"
                                       TargetPath="$([System.IO.Path]::GetFileName($(ProjectDepsFilePath)))"
-                                      CopyToPublishDirectory="PreserveNewest" 
+                                      CopyToPublishDirectory="PreserveNewest"
                                       Condition="'$(_UseBuildDependencyFile)' == 'true'"/>
       <AllPublishItemsFullPathWithTargetPath Include="$(PublishDepsFilePath)"
                                       TargetPath="$([System.IO.Path]::GetFileName($(PublishDepsFilePath)))"
@@ -365,11 +331,11 @@ Copyright (c) .NET Foundation. All rights reserved.
       <AllPublishItemsFullPathWithTargetPath Include="$(ProjectRuntimeConfigFilePath)"
                                 TargetPath="$([System.IO.Path]::GetFileName($(ProjectRuntimeConfigFilePath)))"
                                 CopyToPublishDirectory="PreserveNewest" />
-    
+
 
     </ItemGroup>
-    
-    
+
+
   </Target>
 
   <Target Name="_SdkBeforeClean">
@@ -388,12 +354,16 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         DefaultRuntimeHostConfigurationOptions
-
     Defaults @(RuntimeHostConfigurationOption) items based on MSBuild properties.
     ============================================================
     -->
 
   <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.ComponentModel.TypeConverter.EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization"
+                                    Condition="'$(EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization)' != ''"
+                                    Value="$(EnableUnsafeBinaryFormatterInDesigntimeLicenseContextSerialization)"
+                                    Trim="true" />
+
     <RuntimeHostConfigurationOption Include="System.Diagnostics.Debugger.IsSupported"
                                     Condition="'$(DebuggerSupport)' != ''"
                                     Value="$(DebuggerSupport)"
@@ -426,9 +396,34 @@ Copyright (c) .NET Foundation. All rights reserved.
                                     Value="$(HttpActivityPropagationSupport)"
                                     Trim="true" />
 
+    <RuntimeHostConfigurationOption Include="System.Net.Http.UseNativeHttpHandler"
+                                    Condition="'$(UseNativeHttpHandler)' != ''"
+                                    Value="$(UseNativeHttpHandler)"
+                                    Trim="true" />
+
+    <RuntimeHostConfigurationOption Include="System.Resources.ResourceManager.AllowCustomResourceTypes"
+                                    Condition="'$(CustomResourceTypesSupport)' != ''"
+                                    Value="$(CustomResourceTypesSupport)"
+                                    Trim="true" />
+
     <RuntimeHostConfigurationOption Include="System.Resources.UseSystemResourceKeys"
                                     Condition="'$(UseSystemResourceKeys)' != ''"
                                     Value="$(UseSystemResourceKeys)"
+                                    Trim="true" />
+
+    <RuntimeHostConfigurationOption Include="System.Runtime.InteropServices.BuiltInComInterop.IsSupported"
+                                    Condition="'$(BuiltInComInteropSupport)' != ''"
+                                    Value="$(BuiltInComInteropSupport)"
+                                    Trim="true" />
+
+    <RuntimeHostConfigurationOption Include="System.Runtime.InteropServices.EnableConsumingManagedCodeFromNativeHosting"
+                                    Condition="'$(_EnableConsumingManagedCodeFromNativeHosting)' != ''"
+                                    Value="$(_EnableConsumingManagedCodeFromNativeHosting)"
+                                    Trim="true" />
+
+    <RuntimeHostConfigurationOption Include="System.Runtime.InteropServices.EnableCppCLIHostActivation"
+                                    Condition="'$(EnableCppCLIHostActivation)' != ''"
+                                    Value="$(EnableCppCLIHostActivation)"
                                     Trim="true" />
 
     <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization"
@@ -470,7 +465,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         DefaultAdditionalProbingPaths
-
     Adds the default @(AdditionalProbingPath) items.
     ============================================================
     -->
@@ -542,7 +536,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         _GetAppHostPaths
-
     Gets the path to apphost (restored via packages or in an apphost pack),
     and computes the path for the destination apphost.
     ============================================================
@@ -573,7 +566,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
       ============================================================
                                         _GenerateClsidMap
-
     Generates a *.clsidmap file from the built assembly.
     ============================================================
   -->
@@ -609,14 +601,14 @@ Copyright (c) .NET Foundation. All rights reserved.
     <CreateComHost
       ComHostSourcePath="$(ComHostSourcePath)"
       ComHostDestinationPath="$(ComHostIntermediatePath)"
-      ClsidMapPath="@(ClsidMap)" />
+      ClsidMapPath="@(ClsidMap)"
+      TypeLibraries="@(ComHostTypeLibrary)" />
   </Target>
 
   <UsingTask TaskName="GenerateRegFreeComManifest" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
   <!--
     ============================================================
                                         _GenerateRegFreeComManifest
-
     Gets the path to the restored comhost, and if the restored comhost
     was present, computes the path for the destination comhost.
     ============================================================
@@ -632,13 +624,13 @@ Copyright (c) .NET Foundation. All rights reserved.
       IntermediateAssembly="@(IntermediateAssembly)"
       ComHostName="$(ComHostFileName)"
       ClsidMapPath="@(ClsidMap)"
+      TypeLibraries="@(ComHostTypeLibrary)"
       ComManifestPath="@(RegFreeComManifest)" />
   </Target>
 
   <!--
     ============================================================
                                         _GetComHostPaths
-
     Gets the path to the restored comhost, and if the restored comhost
     was present, computes the path for the destination comhost.
     ============================================================
@@ -658,7 +650,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         _GetIjwHostPaths
-
     Gets the path to the restored Ijwhost, and if the restored Ijwhost
     was present, Computes the path for the destination Ijwhost.
     ============================================================
@@ -674,7 +665,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         _ComputeNETCoreBuildOutputFiles
-
     Computes any files that need to be copied to the build output folder for .NET Core.
     ============================================================
     -->
@@ -750,7 +740,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         _ComputeReferenceAssemblies
-
     Computes references that are only used at compile-time.
     ============================================================
     -->
@@ -785,9 +774,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         _ComputeUserRuntimeAssemblies
-
     Computes references or reference dependencies that are copy local.
-
      NOTE: NuGet and framework references are never copy local so those are not included here.
            These will be project references and direct references and their copy local dependencies.
     ============================================================
@@ -811,7 +798,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         Run Information
-
     The ProcessStart information that can be used to run this project.
     ============================================================
     -->
@@ -946,25 +932,6 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   <!--
   ============================================================
-                           _DefaultMicrosoftNETPlatformLibrary
-
-  .NET Core apps can have shared frameworks that are pre-installed on the target machine, thus the app is "portable"
-  to any machine that already has the shared framework installed. For .NET Core 1.x and 2.x, a "platform" library
-  is declared. The platform library and its dependencies will be excluded from the publish output.
-
-  For .NET Core 3 and up, targeting packs and runtime packs are used for shared framework assets instead of PackageReference
-  ============================================================
-  -->
-  <Target Name="_DefaultMicrosoftNETPlatformLibrary">
-
-    <PropertyGroup Condition="'$(MicrosoftNETPlatformLibrary)' == ''">
-      <MicrosoftNETPlatformLibrary Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(_TargetFrameworkVersionWithoutV)' &lt; '3.0'">Microsoft.NETCore.App</MicrosoftNETPlatformLibrary>
-    </PropertyGroup>
-
-  </Target>
-
-  <!--
-  ============================================================
                                       GetAllRuntimeIdentifiers
   ============================================================
   -->
@@ -980,13 +947,19 @@ Copyright (c) .NET Foundation. All rights reserved.
   into the runtime as assemblies
   ============================================================
   -->
+
+  <UsingTask TaskName="CheckForUnsupportedWinMDReferences" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />  
+
   <Target Name="_BlockWinMDsOnUnsupportedTFMs"
           AfterTargets="PreBuildEvent"
           DependsOnTargets="ResolveReferences"
           Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '5.0'))">
-    <NETSdkError Condition="'%(ReferencePath.Extension)' == '.winmd'"
-      ResourceName="WinMDReferenceNotSupportedOnTargetFramework"
-      FormatArguments="$(TargetFrameworkMoniker)" />
+
+    <CheckForUnsupportedWinMDReferences
+      TargetFrameworkMoniker="$(TargetFrameworkMoniker)"
+      ReferencePaths="@(ReferencePath)"
+      />
+    
     <NETSdkError Condition="'$(OutputType)' == 'winmdobj'"
       ResourceName="WinMDObjNotSupportedOnTargetFramework"
       FormatArguments="$(TargetFrameworkMoniker)" />
@@ -995,13 +968,11 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
   ============================================================
                                       InjectTargetPathMetadata
-
   Update TargetPathWithTargetPlatformMoniker with target framework
   identifier and version metadata.  This is so that the
   ImplicitlyExpandNETStandardFacades target can determine if a
   referenced project needs the .NET Standard facades even if
   the project hasn't been compiled to disk yet.
-
   See https://github.com/dotnet/sdk/issues/1403 for more context
   ============================================================
   -->
@@ -1016,7 +987,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                             GenerateSupportedTargetFrameworkAlias
-    Generate a list of valid TargetFramework aliases for the project 
+    Generate a list of valid TargetFramework aliases for the project
     system to consume for the target framework properties page drop down
     ============================================================
   -->
@@ -1035,6 +1006,44 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   <!--
   ============================================================
+  ValidateExecutableReferences
+  ============================================================
+  -->
+
+  <ItemGroup>
+    <AdditionalTargetFrameworkInfoProperty Include="SelfContained"/>
+    <AdditionalTargetFrameworkInfoProperty Include="_IsExecutable"/>
+    <AdditionalTargetFrameworkInfoProperty Include="ShouldBeValidatedAsExecutableReference"/>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
+    <!-- Don't generate a NETSDK1151 error if a non self-contained Exe references a Blazor wasm Exe -->
+    <ShouldBeValidatedAsExecutableReference>false</ShouldBeValidatedAsExecutableReference>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' And '$(ValidateExecutableReferencesMatchSelfContained)' == ''">
+    <!-- Don't generate an error if a test project references a self-contained Exe.  Test projects
+         use an OutputType of Exe but will usually call APIs in a referenced Exe rather than try
+         to run it. -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+  </PropertyGroup>
+
+  <UsingTask TaskName="ValidateExecutableReferences" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
+
+  <Target Name="ValidateExecutableReferences"
+          AfterTargets="_GetProjectReferenceTargetFrameworkProperties"
+          Condition="'$(ValidateExecutableReferencesMatchSelfContained)' != 'false'">
+
+    <ValidateExecutableReferences
+      SelfContained="$(SelfContained)"
+      IsExecutable="$(_IsExecutable)"
+      ReferencedProjects="@(_MSBuildProjectReferenceExistent)"
+      />
+    
+  </Target>
+
+  <!--
+  ============================================================
                                          Project Capabilities
   ============================================================
   -->
@@ -1048,6 +1057,11 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ProjectCapability Remove="ReferenceManagerAssemblies" />
   </ItemGroup>
 
+  <!-- Enable hot reload in 6.0 and newer apps by default -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '6.0'))">
+    <ProjectCapability Include="SupportsHotReload" />
+  </ItemGroup>
+
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.DisableStandardFrameworkResolution.targets" Condition="'$(DisableStandardFrameworkResolution)' == 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.DesignerSupport.targets" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.GenerateAssemblyInfo.targets" Condition="'$(UsingNETSdkDefaults)' == 'true'"/>
@@ -1056,7 +1070,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.CrossGen.targets" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.ObsoleteReferences.targets" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Publish.targets" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.PackStubs.targets" Condition="'$(Language)' == 'C++'"/>
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.PackStubs.targets" Condition="('$(Language)' == 'C++' and '$(_EnablePackageReferencesInVCProjects)' != 'true')"/>
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.PackTool.targets" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.PackProjectTool.targets" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.PreserveCompilationContext.targets" />
@@ -1064,7 +1078,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Sdk.CSharp.targets" Condition="'$(Language)' == 'C#'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Sdk.VisualBasic.targets" Condition="'$(Language)' == 'VB'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Sdk.FSharp.targets" Condition="'$(Language)' == 'F#'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.ILLink.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.ILLink.targets" Condition="'$(Language)' != 'C++'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Sdk.Analyzers.targets" Condition="'$(Language)' == 'C#' or '$(Language)' == 'VB'" />
 
   <!-- Import WindowsDesktop targets if necessary -->
@@ -1078,9 +1092,16 @@ Copyright (c) .NET Foundation. All rights reserved.
   <PropertyGroup Condition=" '$(ImportWindowsDesktopTargets)' == 'true'">
     <AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)../../Microsoft.NET.Sdk.WindowsDesktop/targets/Microsoft.NET.Sdk.WindowsDesktop.targets</AfterMicrosoftNETSdkTargets>
   </PropertyGroup>
+  
+  <!-- Note: Once WindowsDesktop is a workload this will be moved to WorkloadManifest.targets -->
+  <ItemGroup Condition="'$(MicrosoftNETWindowsWorkloadInstalled)' == 'true' and
+                        '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and
+                        $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '5.0'))">
+    <SdkSupportedTargetPlatformIdentifier Include="windows" DisplayName="Windows" />
+  </ItemGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NET.Windows.targets" Condition="'$(TargetPlatformIdentifier)' == 'Windows'" />
-  
+
   <!-- TargetPlatformMoniker and TargetPlatformDisplayName would normally be set in Microsoft.Common.CurrentVersion.targets.  However, the
        TargetPlatformVersion may have been set later than that in evaluation by platform-specific targets or Directory.Build.targets.  So fix up those properties here -->
   <PropertyGroup Condition="'$(TargetPlatformMoniker)' == '' and '$(TargetPlatformIdentifier)' != ''">
@@ -1097,6 +1118,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <PropertyGroup Condition="'$(SupportedOSPlatformVersion)' == ''">
     <SupportedOSPlatformVersion>$(TargetPlatformVersion)</SupportedOSPlatformVersion>
   </PropertyGroup>
-  
+
   <Import Project="$(AfterMicrosoftNETSdkTargets)" Condition="'$(AfterMicrosoftNETSdkTargets)' != ''"/>
 </Project>

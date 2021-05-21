@@ -38,7 +38,7 @@ namespace Microsoft.NET.Build.Tests
         {
             TestProject testProject = SetUpProject();
 
-            var targetPlatformIdentifier = "iOS";
+            var targetPlatformIdentifier = "fakeOS";
             testProject.AdditionalProperties["TargetPlatformIdentifier"] = targetPlatformIdentifier;
             testProject.AdditionalProperties["TargetPlatformSupported"] = "true";
             testProject.AdditionalProperties["TargetPlatformVersionSupported"] = "true";
@@ -52,8 +52,8 @@ namespace Microsoft.NET.Build.Tests
             runCommand.Execute()
                 .Should()
                 .Pass()
-                .And.HaveStdOutContaining(TargetPlatformAttribute("iOS14.0"))
-                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("iOS13.2"));
+                .And.HaveStdOutContaining(TargetPlatformAttribute("fakeOS14.0"))
+                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("fakeOS13.2"));
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace Microsoft.NET.Build.Tests
         {
             TestProject testProject = SetUpProject();
 
-            var targetPlatformIdentifier = "iOS";
+            var targetPlatformIdentifier = "fakeOS";
             testProject.AdditionalProperties["TargetPlatformIdentifier"] = targetPlatformIdentifier;
             testProject.AdditionalProperties["TargetPlatformSupported"] = "true";
             testProject.AdditionalProperties["TargetPlatformVersionSupported"] = "true";
@@ -74,8 +74,8 @@ namespace Microsoft.NET.Build.Tests
             runCommand.Execute()
                 .Should()
                 .Pass()
-                .And.HaveStdOutContaining(TargetPlatformAttribute("iOS13.2"))
-                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("iOS13.2"));
+                .And.HaveStdOutContaining(TargetPlatformAttribute("fakeOS13.2"))
+                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("fakeOS13.2"));
         }
 
         [Fact]
@@ -102,7 +102,7 @@ namespace Microsoft.NET.Build.Tests
         {
             TestProject testProject = SetUpProject(targetFramework);
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
 
             var runCommand = new DotnetCommand(Log, "run");
             runCommand.WorkingDirectory = Path.Combine(testAsset.TestRoot, testProject.Name);
@@ -135,7 +135,7 @@ namespace Microsoft.NET.Build.Tests
         {
             TestProject testProject = SetUpProject();
 
-            var targetPlatformIdentifier = "iOS";
+            var targetPlatformIdentifier = "fakeOS";
             testProject.AdditionalProperties["TargetPlatformIdentifier"] = targetPlatformIdentifier;
             testProject.AdditionalProperties["TargetPlatformVersionSupported"] = "true";
             testProject.AdditionalProperties["TargetPlatformVersion"] = "13.2";
@@ -226,7 +226,7 @@ namespace Microsoft.NET.Build.Tests
 
             testProject.AdditionalProperties["TargetPlatformMinVersion"] = "10.0.18362.0";
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
 
             new BuildCommand(testAsset)
                 .Execute()
@@ -239,7 +239,7 @@ namespace Microsoft.NET.Build.Tests
         {
             TestProject testProject = SetUpProject();
 
-            var targetPlatformIdentifier = "iOS";
+            var targetPlatformIdentifier = "fakeOS";
             testProject.AdditionalProperties["TargetPlatformIdentifier"] = targetPlatformIdentifier;
             testProject.AdditionalProperties["TargetPlatformSupported"] = "true";
             testProject.AdditionalProperties["TargetPlatformVersionSupported"] = "true";
@@ -254,8 +254,8 @@ namespace Microsoft.NET.Build.Tests
             runCommand.Execute()
                 .Should()
                 .Pass()
-                .And.HaveStdOutContaining(TargetPlatformAttribute("iOS14.0"))
-                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("iOS13.2"));
+                .And.HaveStdOutContaining(TargetPlatformAttribute("fakeOS14.0"))
+                .And.HaveStdOutContaining(SupportedOSPlatformAttribute("fakeOS13.2"));
         }
 
         private static string TargetPlatformAttribute(string targetPlatform)

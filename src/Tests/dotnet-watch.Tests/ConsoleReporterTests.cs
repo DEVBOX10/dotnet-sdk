@@ -42,6 +42,12 @@ namespace Microsoft.Extensions.Tools.Internal
             private readonly StringBuilder _out;
             private readonly StringBuilder _error;
 
+            event Action<ConsoleKeyInfo> IConsole.KeyPressed
+            {
+                add { }
+                remove { }
+            }
+
             public TestConsole()
             {
                 _out = new StringBuilder();

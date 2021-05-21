@@ -27,7 +27,7 @@ namespace Microsoft.DotNet.Build.Tasks
     {
         private static string _messageWhenMismatch =
             "{0} version {1} does not match BundledNETCoreAppPackageVersion {2}. " +
-            "The schema of https://github.com/dotnet/installer/blob/master/src/redist/targets/GenerateBundledVersions.targets might change. " +
+            "The schema of https://github.com/dotnet/installer/blob/main/src/redist/targets/GenerateBundledVersions.targets might change. " +
             "We need to ensure we can swap the runtime version from what's in stage0 to what dotnet/sdk used successfully";
 
         [Required] public string Stage0MicrosoftNETCoreAppRefPackageVersionPath { get; set; }
@@ -107,6 +107,16 @@ namespace Microsoft.DotNet.Build.Tasks
                 .Elements(ns + "KnownAppHostPack").First().Attribute("AppHostPackVersion"));
             CheckAndReplaceAttribute(itemGroup
                 .Elements(ns + "KnownCrossgen2Pack").First().Attribute("Crossgen2PackVersion"));
+
+            // TODO: remove this once we're using an SDK that contains https://github.com/dotnet/installer/pull/10250
+            var crossgen2Rids = itemGroup.Elements(ns + "KnownCrossgen2Pack").First().Attribute("Crossgen2RuntimeIdentifiers");
+            if (!crossgen2Rids.Value.Contains("osx-x64"))
+            {
+                crossgen2Rids.Value += ";osx-x64";
+            }
+
+            CheckAndReplaceAttribute(itemGroup
+                .Elements(ns + "KnownRuntimePack").First().Attribute("LatestRuntimeFrameworkVersion"));
 
             return projectXml.ToString();
         }

@@ -8,11 +8,14 @@ using System.CommandLine.Help;
 using System.CommandLine.Invocation;
 using System.CommandLine.IO;
 using System.Reflection;
+using Microsoft.DotNet.Cli.Utils;
 using Microsoft.DotNet.Tools;
 using Microsoft.DotNet.Tools.Help;
 using Microsoft.DotNet.Tools.MSBuild;
 using Microsoft.DotNet.Tools.New;
 using Microsoft.DotNet.Tools.NuGet;
+using Command = System.CommandLine.Command;
+using ICommand = System.CommandLine.ICommand;
 
 namespace Microsoft.DotNet.Cli
 {
@@ -44,7 +47,8 @@ namespace Microsoft.DotNet.Cli
             TestCommandParser.GetCommand(),
             ToolCommandParser.GetCommand(),
             VSTestCommandParser.GetCommand(),
-            HelpCommandParser.GetCommand()
+            HelpCommandParser.GetCommand(),
+            SdkCommandParser.GetCommand()
         };
 
         // Internal commands
@@ -64,13 +68,16 @@ namespace Microsoft.DotNet.Cli
         // Argument
         public static readonly Argument DotnetSubCommand = new Argument<string>() { Arity = ArgumentArity.ExactlyOne, IsHidden = true };
 
-        private static Command ConfigureCommandLine(Command rootCommand)
+        private static Command ConfigureCommandLine(Command rootCommand, bool includeWorkloadCommands = false)
         {
             // Add subcommands
             foreach (var subcommand in Subcommands)
             {
                 rootCommand.AddCommand(subcommand);
             }
+
+            // Workload command is behind a feature flag during development
+            rootCommand.AddCommand(WorkloadCommandParser.GetCommand(includeWorkloadCommands || Env.GetEnvironmentVariableAsBool("DEVENABLEWORKLOADCOMMAND", defaultValue: false)));
 
             //Add internal commands
            rootCommand.AddCommand(InstallSuccessCommand);
@@ -88,13 +95,30 @@ namespace Microsoft.DotNet.Cli
             return rootCommand;
         }
 
+        private static CommandLineBuilder DisablePosixBinding(this CommandLineBuilder builder)
+        {
+            builder.EnablePosixBundling = false;
+            return builder;
+        }
+
         public static System.CommandLine.Parsing.Parser Instance { get; } = new CommandLineBuilder(ConfigureCommandLine(RootCommand))
             .UseExceptionHandler(ExceptionHandler)
             .UseHelp()
             .UseHelpBuilder(context => new DotnetHelpBuilder(context.Console))
-            .UseValidationMessages(new CommandLineValidationMessages())
+            .UseResources(new CommandLineValidationMessages())
             .UseParseDirective()
             .UseSuggestDirective()
+            .DisablePosixBinding()
+            .Build();
+
+        public static System.CommandLine.Parsing.Parser GetWorkloadsInstance { get; } = new CommandLineBuilder(ConfigureCommandLine(new RootCommand(), true))
+            .UseExceptionHandler(ExceptionHandler)
+            .UseHelp()
+            .UseHelpBuilder(context => new DotnetHelpBuilder(context.Console))
+            .UseResources(new CommandLineValidationMessages())
+            .UseParseDirective()
+            .UseSuggestDirective()
+            .DisablePosixBinding()
             .Build();
 
         private static void ExceptionHandler(Exception exception, InvocationContext context)
@@ -118,7 +142,7 @@ namespace Microsoft.DotNet.Cli
                 context.Console.Error.WriteLine(exception.ToString());
             }
             context.ParseResult.ShowHelp();
-            context.ResultCode = 1;
+            context.ExitCode = 1;
         }
 
         internal class CommandLineConsole : IConsole
@@ -170,7 +194,7 @@ namespace Microsoft.DotNet.Cli
                         ListCommandParser.SlnOrProjectArgument.Name = CommonLocalizableStrings.ProjectArgumentName;
                         ListCommandParser.SlnOrProjectArgument.Description = CommonLocalizableStrings.ProjectArgumentDescription;
                     }
-                    else if (command.Name.Equals(AddPackageParser.GetCommand().Name))
+                    else if (command.Name.Equals(AddPackageParser.GetCommand().Name) || command.Name.Equals(AddCommandParser.GetCommand().Name))
                     {
                         // Don't show package suggestions in help
                         AddPackageParser.CmdPackageArgument.Suggestions.Clear();

@@ -24,7 +24,7 @@ namespace Microsoft.DotNet.Cli.Remove.Reference.Tests
   Remove a project-to-project reference from the project.
 
 Usage:
-  dotnet remove <PROJECT> reference [options] <PROJECT_PATH>...
+  dotnet [options] remove <PROJECT> reference <PROJECT_PATH>...
 
 Arguments:
   <PROJECT>         The project file to operate on. If a file is not specified, the command will search the current directory for one. [default: {PathUtility.EnsureTrailingSlash(defaultVal)}]
@@ -38,7 +38,7 @@ Options:
       .NET Remove Command
     
     Usage:
-      dotnet remove [options] <PROJECT> [command]
+      dotnet [options] remove <PROJECT> [command]
     
     Arguments:
       <PROJECT>    The project file to operate on. If a file is not specified, the command will search the current directory for one. [default: {PathUtility.EnsureTrailingSlash(defaultVal)}]
@@ -63,7 +63,7 @@ Options:
         private TestSetup Setup([System.Runtime.CompilerServices.CallerMemberName] string callingMethod = nameof(Setup), string identifier = "")
         {
             return new TestSetup(
-                _testAssetsManager.CopyTestAsset(TestSetup.ProjectName, callingMethod: callingMethod + nameof(GivenDotnetRemoveReference), identifier: identifier, testAssetSubdirectory: TestAssetSubdirectories.NonRestoredTestProjects)
+                _testAssetsManager.CopyTestAsset(TestSetup.ProjectName, callingMethod: callingMethod + nameof(GivenDotnetRemoveReference), identifier: identifier + callingMethod, testAssetSubdirectory: TestAssetSubdirectories.NonRestoredTestProjects)
                     .WithSource()
                     .Path);
         }
@@ -179,7 +179,7 @@ Options:
         [InlineData("ihave?inv@lid/char\\acters")]
         public void WhenNonExistingProjectIsPassedItPrintsErrorAndUsage(string projName)
         {
-            var setup = Setup();
+            var setup = Setup(identifier: projName.GetHashCode().ToString());
 
             var cmd = new RemoveReferenceCommand(Log)
                     .WithProject(projName)

@@ -19,9 +19,15 @@ namespace Microsoft.DotNet.Cli
         {
             if (parseResult.Errors.Any())
             {
-                throw new CommandParsingException(
-                    message: string.Join(Environment.NewLine,
-                                         parseResult.Errors.Select(e => e.Message)));
+                var unrecognizedTokenErrors = parseResult.Errors.Where(error =>
+                    error.Message.Contains(Parser.Instance.Configuration.Resources.UnrecognizedCommandOrArgument(string.Empty).Replace("'", string.Empty)));
+                if (parseResult.CommandResult.Command.TreatUnmatchedTokensAsErrors ||
+                    parseResult.Errors.Except(unrecognizedTokenErrors).Any())
+                {
+                    throw new CommandParsingException(
+                        message: string.Join(Environment.NewLine,
+                                             parseResult.Errors.Select(e => e.Message)));
+                }
             }
             else if (parseResult.HasOption("--help"))
             {
@@ -37,6 +43,28 @@ namespace Microsoft.DotNet.Cli
                 .FirstOrDefault(subcommand => !string.IsNullOrEmpty(subcommand)) ?? string.Empty;
         }
 
+        public static bool IsDotnetBuiltInCommand(this ParseResult parseResult)
+        {
+            return string.IsNullOrEmpty(parseResult.RootSubCommandResult()) || BuiltInCommandsCatalog.Commands.ContainsKey(parseResult.RootSubCommandResult());
+        }
+
+        public static bool IsTopLevelDotnetCommand(this ParseResult parseResult)
+        {
+            return parseResult.CommandResult.Command.Equals(RootCommand) && string.IsNullOrEmpty(parseResult.RootSubCommandResult());
+        }
+
+        public static string[] GetSubArguments(this string[] args)
+        {
+            var subargs = args.ToList();
+            subargs.RemoveAll(arg => DiagOption.Aliases.Contains(arg));
+            if (subargs[0].Equals("dotnet"))
+            {
+                subargs.RemoveAt(0);
+            }
+            subargs.RemoveAt(0); // remove top level command (ex build or publish)
+            return subargs.ToArray();
+        }
+
         private static string GetSymbolResultValue(ParseResult parseResult, SymbolResult symbolResult)
         {
             if (symbolResult.Token() == null)
@@ -46,6 +74,10 @@ namespace Microsoft.DotNet.Cli
             else if (symbolResult.Token().Type.Equals(TokenType.Command))
             {
                 return symbolResult.Symbol.Name;
+            }
+            else if (symbolResult.Token().Type.Equals(TokenType.Argument))
+            {
+                return symbolResult.Token().Value;
             }
             else
             {

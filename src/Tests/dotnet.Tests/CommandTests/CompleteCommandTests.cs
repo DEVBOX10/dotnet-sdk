@@ -36,6 +36,7 @@ namespace Microsoft.DotNet.Tests.Commands
                 "build",
                 "build-server",
                 "clean",
+                "sdk",
                 "fsi",
                 "help",
                 "list",
@@ -51,7 +52,8 @@ namespace Microsoft.DotNet.Tests.Commands
                 "store",
                 "test",
                 "tool",
-                "vstest"
+                "vstest",
+                "workload"
             };
 
             var reporter = new BufferedReporter();
@@ -72,8 +74,8 @@ namespace Microsoft.DotNet.Tests.Commands
                 "-?",
                 "-d",
                 "-h",
-                "build-server" // This should be removed when completion is based on "starts with" rather than "contains".
-                               // See https://github.com/dotnet/cli/issues/8958.
+                "build-server", // These should be removed when completion is based on "starts with" rather than "contains".
+                                // See https://github.com/dotnet/cli/issues/8958.
             };
 
             var reporter = new BufferedReporter();
@@ -132,6 +134,7 @@ namespace Microsoft.DotNet.Tests.Commands
                 "delete",
                 "locals",
                 "push",
+                "verify"
             };
 
             var reporter = new BufferedReporter();
@@ -220,6 +223,26 @@ namespace Microsoft.DotNet.Tests.Commands
 
             var reporter = new BufferedReporter();
             CompleteCommand.RunWithReporter(new[] { "dotnet nuget push " }, reporter).Should().Be(0);
+            reporter.Lines.OrderBy(c => c).Should().Equal(expected.OrderBy(c => c));
+        }
+
+        [Fact]
+        public void GivenNuGetVerifyCommandItDisplaysCompletions()
+        {
+            var expected = new[] {
+                "--all",
+                "--certificate-fingerprint",
+                "--verbosity",
+                "--help",
+                "-v",
+                "-?",
+                "-h",
+                "/?",
+                "/h",
+            };
+
+            var reporter = new BufferedReporter();
+            CompleteCommand.RunWithReporter(new[] { "dotnet nuget verify " }, reporter).Should().Be(0);
             reporter.Lines.OrderBy(c => c).Should().Equal(expected.OrderBy(c => c));
         }
     }

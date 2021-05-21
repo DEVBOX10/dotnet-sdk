@@ -3,6 +3,7 @@ trigger:
   branches:
     include:
     - master
+    - main
     - release/*
     - internal/release/3.*
     - internal/release/5.*
@@ -49,12 +50,6 @@ stages:
       helixTargetQueue: Windows.Server.Amd64.VS2019.Pre.Open
       strategy:
         matrix:
-          ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-            Build_Debug:
-              _BuildConfig: Debug
-              _PublishType: none
-              _SignType: test
-              _Test: -test
           Build_Release:
             _BuildConfig: Release
             ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
@@ -65,6 +60,11 @@ stages:
               _PublishType: blob
               _SignType: real
               _Test: ''
+  - template: /eng/common/templates/job/source-build.yml
+    parameters:
+      platform:
+        name: 'Managed'
+        container: 'mcr.microsoft.com/dotnet-buildtools/prereqs:centos-7-3e800f1-20190501005343'
   - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
     - template: /eng/build.yml
       parameters:
@@ -126,10 +126,6 @@ stages:
           helixTargetQueue: Ubuntu.1604.Amd64
         strategy:
           matrix:
-            Build_Debug:
-              _BuildConfig: Debug
-              _PublishType: none
-              _SignType: test
             Build_Release:
               _BuildConfig: Release
               _PublishType: none
@@ -146,10 +142,6 @@ stages:
           helixTargetQueue: OSX.1014.Amd64
         strategy:
           matrix:
-            Build_Debug:
-              _BuildConfig: Debug
-              _PublishType: none
-              _SignType: test
             Build_Release:
               _BuildConfig: Release
               _PublishType: none

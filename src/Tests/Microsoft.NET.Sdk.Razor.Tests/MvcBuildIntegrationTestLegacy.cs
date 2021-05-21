@@ -3,9 +3,11 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyModel;
 using Microsoft.NET.TestFramework;
 using Microsoft.NET.TestFramework.Assertions;
 using Microsoft.NET.TestFramework.Commands;
@@ -15,7 +17,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.NET.Sdk.Razor.Tests
 {
-    public abstract class MvcBuildIntegrationTestLegacy : RazorSdkTest
+    public abstract class MvcBuildIntegrationTestLegacy : AspNetSdkTest
     {
         public abstract string TestProjectName { get; }
         public abstract string TargetFramework { get; }
@@ -29,7 +31,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public virtual void Building_Project()
         {
             var testAsset = $"Razor{TestProjectName}";
-            var project = CreateRazorSdkTestAsset(testAsset);
+            var project = CreateAspNetSdkTestAsset(testAsset);
 
             // Build
             var build = new BuildCommand(project);
@@ -49,14 +51,13 @@ namespace Microsoft.NET.Sdk.Razor.Tests
             new FileInfo(
                 Path.Combine(intermediateOutputPath, $"{TestProjectName}.TagHelpers.output.cache")).Should().Contain(
                 @"""Name"":""SimpleMvc.SimpleTagHelper""");
-
         }
 
         [CoreMSBuildOnlyFact]
         public virtual void BuildingProject_CopyToOutputDirectoryFiles()
         {
             var testAsset = $"Razor{TestProjectName}";
-            var project = CreateRazorSdkTestAsset(testAsset);
+            var project = CreateAspNetSdkTestAsset(testAsset);
 
             // Build
             var build = new BuildCommand(project);
@@ -76,7 +77,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public virtual void Publish_Project()
         {
             var testAsset = $"Razor{TestProjectName}";
-            var project = CreateRazorSdkTestAsset(testAsset);
+            var project = CreateAspNetSdkTestAsset(testAsset);
 
             var publish = new PublishCommand(Log, project.TestRoot);
             publish.Execute().Should().Pass();
@@ -98,7 +99,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public virtual void Publish_IncludesRefAssemblies_WhenCopyRefAssembliesToPublishDirectoryIsSet()
         {
             var testAsset = $"Razor{TestProjectName}";
-            var project = CreateRazorSdkTestAsset(testAsset);
+            var project = CreateAspNetSdkTestAsset(testAsset);
 
             var publish = new PublishCommand(Log, project.TestRoot);
             publish.Execute("/p:CopyRefAssembliesToPublishDirectory=true").Should().Pass();
@@ -106,6 +107,44 @@ namespace Microsoft.NET.Sdk.Razor.Tests
             var outputPath = publish.GetOutputDirectory(TargetFramework, "Debug").ToString();
 
             new FileInfo(Path.Combine(outputPath, "refs", "System.Threading.Tasks.Extensions.dll")).Should().Exist();
+        }
+
+        [CoreMSBuildOnlyFact]
+        public void Build_ProducesDepsFileWithCompilationContext_ButNoReferences()
+        {
+            var testAsset = $"Razor{TestProjectName}";
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
+
+            var customDefine = "AspNetSdkTest";
+            var build = new BuildCommand(projectDirectory);
+            build.Execute($"/p:DefineConstants={customDefine}").Should().Pass();
+
+            var outputPath = build.GetOutputDirectory(TargetFramework, "Debug").ToString();
+
+            var depsFile = new FileInfo(Path.Combine(outputPath, $"{TestProjectName}.deps.json"));
+            depsFile.Should().Exist();
+            var dependencyContext = ReadDependencyContext(depsFile.FullName);
+
+            // Ensure some compile references exist
+            var packageReference = dependencyContext.CompileLibraries.First(l => l.Name == "System.Runtime.CompilerServices.Unsafe");
+            packageReference.Assemblies.Should().NotBeEmpty();
+
+            var projectReference = dependencyContext.CompileLibraries.First(l => l.Name == TestProjectName);
+            projectReference.Assemblies.Should().NotBeEmpty();
+
+            dependencyContext.CompilationOptions.Defines.Should().Contain(customDefine);
+
+            // Verify no refs folder is produced
+            new DirectoryInfo(Path.Combine(outputPath, "publish", "refs")).Should().NotExist();
+        }
+
+        private static DependencyContext ReadDependencyContext(string depsFilePath)
+        {
+            var reader = new DependencyContextJsonReader();
+            using (var stream = File.OpenRead(depsFilePath))
+            {
+                return reader.Read(stream);
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and
           created a backup copy.  Incorrect changes to this file will make it
           impossible to load or build your projects from the command-line or the IDE.
 
-Copyright (c) .NET Foundation. All rights reserved. 
+Copyright (c) .NET Foundation. All rights reserved.
 ***********************************************************************************************
 -->
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -39,20 +39,26 @@ Copyright (c) .NET Foundation. All rights reserved.
     <EffectiveAnalysisLevel Condition="'$(AnalysisLevel)' == 'preview' or '$(AnalysisLevelPrefix)' == 'preview'">6.0</EffectiveAnalysisLevel>
 
     <!-- Set EffectiveAnalysisLevel to the value of AnalysisLevel if it is a version number -->
-    <EffectiveAnalysisLevel Condition="'$(EffectiveAnalysisLevel)' == '' And 
+    <EffectiveAnalysisLevel Condition="'$(EffectiveAnalysisLevel)' == '' And
                                        '$(AnalysisLevelPrefix)' != ''">$(AnalysisLevelPrefix)</EffectiveAnalysisLevel>
-    <EffectiveAnalysisLevel Condition="'$(EffectiveAnalysisLevel)' == '' And 
+    <EffectiveAnalysisLevel Condition="'$(EffectiveAnalysisLevel)' == '' And
                                        '$(AnalysisLevel)' != ''">$(AnalysisLevel)</EffectiveAnalysisLevel>
 
     <!-- EnableNETAnalyzers Allows analyzers to be disabled in bulk via msbuild if the user wants to -->
-    <EnableNETAnalyzers Condition="'$(EnableNETAnalyzers)' == '' And 
+    <EnableNETAnalyzers Condition="'$(EnableNETAnalyzers)' == '' And
                                    '$(EffectiveAnalysisLevel)' != '' And
                                     $([MSBuild]::VersionGreaterThanOrEquals($(EffectiveAnalysisLevel), '5.0'))">true</EnableNETAnalyzers>
     <EnableNETAnalyzers Condition="'$(EnableNETAnalyzers)' == ''">false</EnableNETAnalyzers>
 
+    <!-- Intermediate step to enable ILLink.Analyzers so ILLink, Blazor, Xamarin, AOT, etc. can enable the same flags -->
+    <EnableSingleFileAnalyzer Condition="'$(EnableSingleFileAnalyzer)' == '' And
+                                         '$(PublishSingleFile)' == 'true'">true</EnableSingleFileAnalyzer>
+    <EnableTrimAnalyzer Condition="'$(EnableTrimAnalyzer)' == '' And
+                                   ('$(IsTrimmable)' == 'true' Or '$(PublishTrimmed)' == 'true')">true</EnableTrimAnalyzer>
+
     <!-- EnforceCodeStyleInBuild Allows code style analyzers to be disabled in bulk via msbuild if the user wants to -->
     <EnforceCodeStyleInBuild Condition="'$(EnforceCodeStyleInBuild)' == ''">false</EnforceCodeStyleInBuild>
-    
+
     <!-- Compiler warning level, defaulted to 4. We promote it to 5 if the user has set analysis level to 5 or higher
          NOTE: at this time only the C# compiler supports warning waves -->
     <WarningLevel Condition="'$(Language)' == 'C#' And
@@ -61,7 +67,6 @@ Copyright (c) .NET Foundation. All rights reserved.
     <!-- If the user specified 'preview' we want to pick a very high warning level to opt into the highest possible warning wave -->
     <WarningLevel Condition="'$(Language)' == 'C#' And
                              '$(AnalysisLevel)' == 'preview'">9999</WarningLevel>
-
   </PropertyGroup>
   <!-- Unconditionally import 'Microsoft.CodeAnalysis.NetAnalyzers.props' for all C# and VB projects for supporting https://github.com/dotnet/roslyn-analyzers/issues/3977 -->
   <Import Project="$(MSBuildThisFileDirectory)..\analyzers\build\Microsoft.CodeAnalysis.NetAnalyzers.props"
@@ -69,7 +74,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <Import Project="$(MSBuildThisFileDirectory)..\analyzers\build\Microsoft.CodeAnalysis.NetAnalyzers.targets"
           Condition="$(EnableNETAnalyzers)" />
   <Import Project="$(MSBuildThisFileDirectory)..\analyzers\build\Microsoft.NET.ILLink.Analyzers.props"
-          Condition="'$(PublishSingleFile)' == 'true' Or '$(PublishTrimmed)' == 'true'" />
+          Condition="'$(EnableSingleFileAnalyzer)' == 'true' Or '$(EnableTrimAnalyzer)' == 'true'" />
 
   <!-- .NET Analyzers -->
   <ItemGroup Condition="$(EnableNETAnalyzers)">
@@ -86,8 +91,8 @@ Copyright (c) .NET Foundation. All rights reserved.
       IsImplicitlyDefined="true" />
     <!-- ILLinker Analyzers -->
     <Analyzer
-      Condition="'$(PublishSingleFile)' == 'true' Or '$(PublishTrimmed)' == 'true'"
-      Include="$(MSBuildThisFileDirectory)..\analyzers\ILLink.RoslynAnalyzer.dll"
+      Condition="'$(EnableSingleFileAnalyzer)' == 'true' Or '$(EnableTrimAnalyzer)' == 'true'"
+      Include="$(MSBuildThisFileDirectory)..\analyzers\ILLink.*.dll"
       IsImplicitlyDefined="true" />
   </ItemGroup>
 

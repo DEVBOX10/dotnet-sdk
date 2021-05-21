@@ -6,10 +6,18 @@ WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and
           created a backup copy.  Incorrect changes to this file will make it
           impossible to load or build your projects from the command-line or the IDE.
 
-Copyright (c) .NET Foundation. All rights reserved. 
+Copyright (c) .NET Foundation. All rights reserved.
 ***********************************************************************************************
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Condition="'$(PublishReadyToRun)' == 'true' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and '$(_TargetFrameworkVersionWithoutV)' >= '3.0'">
+    <!-- For .NET 6 and higher, default to using Crossgen2 in non-composite mode -->
+    <PublishReadyToRunUseCrossgen2 Condition="'$(PublishReadyToRunUseCrossgen2)' == '' and '$(_TargetFrameworkVersionWithoutV)' >= '6.0'">true</PublishReadyToRunUseCrossgen2>
+    <PublishReadyToRunComposite Condition="'$(PublishReadyToRunComposite)' == '' and '$(_TargetFrameworkVersionWithoutV)' >= '6.0'">false</PublishReadyToRunComposite>
+    <PublishReadyToRunComposite Condition="'$(PublishReadyToRunComposite)' == ''">true</PublishReadyToRunComposite>
+    <PublishReadyToRunComposite Condition="'$(PublishReadyToRunUseCrossgen2)' != 'true' or '$(SelfContained)' != 'true'">false</PublishReadyToRunComposite>
+  </PropertyGroup>
 
   <!--
     ============================================================
@@ -21,7 +29,7 @@ Copyright (c) .NET Foundation. All rights reserved.
         Crossgen
     ============================================================
     -->
-  
+
   <Target Name="PrepOptimizer"
           DependsOnTargets="_RestoreCrossgen;"
           Condition="$(SkipOptimization) != 'true' ">
@@ -79,12 +87,12 @@ Copyright (c) .NET Foundation. All rights reserved.
           UseSymboliclinksIfPossible="$(CreateSymbolicLinksForPublishFilesIfPossible)">
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
     </Copy>
-    
+
     <PropertyGroup>
       <Crossgen>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine($(_NetCoreRefDir), $([System.IO.Path]::GetFileName($(Crossgen)))))))</Crossgen>
     </PropertyGroup>
   </Target>
-  
+
   <!--
     ============================================================
                                         _RunOptimizer
@@ -92,7 +100,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     Start the optimization phase
     ============================================================
     -->
-  
+
   <Target Name="_RunOptimizer"
           DependsOnTargets="_InitializeBasicProps;
                             _ComputeResolvedFilesToStoreTypes;
@@ -115,7 +123,7 @@ Copyright (c) .NET Foundation. All rights reserved.
         </Properties>
       </AssembliestoCrossgen>
     </ItemGroup>
-    
+
     <!-- CrossGen the assemblies  -->
     <MSBuild Projects="@(AssembliestoCrossgen)"
                  Targets="RunCrossGen"
@@ -127,7 +135,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <!--
     ============================================================
                                         RunCrossGen
-    Target Encapsulating the crossgen command  
+    Target Encapsulating the crossgen command
     ============================================================
     -->
 
@@ -164,14 +172,14 @@ Copyright (c) .NET Foundation. All rights reserved.
     <MakeDir Directories="$(CrossgenProfilingSymbolsOutputDirectory)"
              Condition="'$(CreateProfilingSymbols)' == 'true' and Exists($(CrossgenOutputAssembly))" />
     <Exec Command="$(CrossgenExe) -nologo -readytorun -platform_assemblies_paths $(CrossgenPlatformAssembliesPath) -$(CreateProfilingSymbolsOptionName) $(CrossgenProfilingSymbolsOutputDirectory) $(CrossgenOutputAssembly)"
-          Condition="'$(CreateProfilingSymbols)' == 'true' and Exists($(CrossgenOutputAssembly))" 
+          Condition="'$(CreateProfilingSymbols)' == 'true' and Exists($(CrossgenOutputAssembly))"
           IgnoreStandardErrorWarningFormat="true" />
 
     <ItemGroup>
       <_ProfilingSymbols Include="$(CrossgenProfilingSymbolsOutputDirectory)\*"
                          Condition="'$(CreateProfilingSymbols)' == 'true'" />
     </ItemGroup>
-    
+
     <Copy SourceFiles="@(_ProfilingSymbols)"
           DestinationFolder="$(CrossgenSymbolsStagingDirectory)"
           Condition="'$(CreateProfilingSymbols)' == 'true'"
@@ -188,14 +196,14 @@ Copyright (c) .NET Foundation. All rights reserved.
       <DirectorySeparatorChar>$([System.IO.Path]::DirectorySeparatorChar)</DirectorySeparatorChar>
     </PropertyGroup>
   </Target>
-  
+
   <!--
     ============================================================
                                        _GetCrossgenProps
     Generates props used by Crossgen
     ============================================================
     -->
-  
+
   <Target Name="_GetCrossgenProps"
     Condition="$(SkipOptimization) != 'true' ">
 
@@ -208,7 +216,7 @@ Copyright (c) .NET Foundation. All rights reserved.
       <_CrossProjAssetsFile>$([System.IO.Path]::Combine($(_CrossProjFileDir),  project.assets.json))</_CrossProjAssetsFile>
     </PropertyGroup>
 
-    
+
   </Target>
 
   <!--
@@ -216,7 +224,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                                         _SetupStageForCrossgen
     ============================================================
     -->
-  
+
   <Target Name="_SetupStageForCrossgen"
           DependsOnTargets="_GetCrossgenProps;">
     <PropertyGroup>
@@ -224,15 +232,15 @@ Copyright (c) .NET Foundation. All rights reserved.
       <_RuntimeOptimizedDir>$([System.IO.Path]::Combine($(StoreWorkerWorkingDir), "runtimopt"))</_RuntimeOptimizedDir>      <!-- optimized app managed assemblies in nuget cache layout -->
       <_RuntimeSymbolsDir>$([System.IO.Path]::Combine($(StoreWorkerWorkingDir), "runtimesymbols"))</_RuntimeSymbolsDir>
     </PropertyGroup>
-    
+
     <ItemGroup>
       <_ManagedResolvedFilesToOptimize Include="@(_ManagedResolvedFileToPublishCandidates)" />
     </ItemGroup>
-    
+
     <MakeDir Directories="$(_RuntimeOptimizedDir)"/>
     <MakeDir Directories="$(_RuntimeSymbolsDir)"
              Condition="'$(CreateProfilingSymbols)' == 'true'" />
-    
+
     <!-- Copy managed files to  a flat temp directory for passing it as ref -->
     <Copy SourceFiles = "@(_ManagedResolvedFilesToOptimize)"
           DestinationFolder="$(_RuntimeRefDir)"
@@ -253,7 +261,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     Restores netcoreapp and publishes it to a temp directory
     ============================================================
     -->
-  
+
   <Target Name="_RestoreCrossgen"
           DependsOnTargets="PrepforRestoreForComposeStore;
                            _SetupStageForCrossgen;
@@ -313,5 +321,188 @@ Copyright (c) .NET Foundation. All rights reserved.
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
     </Copy>
   </Target>
- 
+
+  <PropertyGroup>
+    <MicrosoftNETCrossgenBuildTasksAssembly Condition="'$(MSBuildRuntimeType)' == 'Core'">$(MSBuildThisFileDirectory)..\tasks\net6.0\Microsoft.NET.Sdk.Crossgen.dll</MicrosoftNETCrossgenBuildTasksAssembly>
+    <MicrosoftNETCrossgenBuildTasksAssembly Condition="'$(MSBuildRuntimeType)' != 'Core'">$(MSBuildThisFileDirectory)..\tasks\net472\Microsoft.NET.Sdk.Crossgen.dll</MicrosoftNETCrossgenBuildTasksAssembly>
+  </PropertyGroup>
+
+  <!--
+    ============================================================
+                                        CreateReadyToRunImages
+
+    Create ReadyToRun images for managed assemblies in _ResolvedFileToPublishAlways and _ResolvedFileToPublishPreserveNewest.
+    ============================================================
+    -->
+  <Target Name="CreateReadyToRunImages"
+          Condition="'$(_TargetFrameworkVersionWithoutV)' >= '3.0' And '$(PublishReadyToRun)' == 'true' And '$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
+          DependsOnTargets="_PrepareForReadyToRunCompilation;
+                            _CreateR2RImages;
+                            _CreateR2RSymbols">
+
+    <AllowEmptyTelemetry EventName="ReadyToRun" EventData="PublishReadyToRunUseCrossgen2=$(PublishReadyToRunUseCrossgen2);Crossgen2PackVersion=%(ResolvedCrossgen2Pack.NuGetPackageVersion);CompileListCount=@(_ReadyToRunCompileList->Count());FailedCount=@(_ReadyToRunCompilationFailures->Count())" />
+
+    <NETSdkError Condition="'@(_ReadyToRunCompilationFailures)' != ''" ResourceName="ReadyToRunCompilationFailed" />
+
+    <NETSdkInformation Condition="'$(_ReadyToRunCompilerHasWarnings)' != ''" ResourceName="ReadyToRunCompilationHasWarnings_Info" />
+
+    <ItemGroup>
+      <!--
+      Note: we only remove the entries for the IL images and replace them with the entries for the R2R images.
+      We do not do the same for PDBs, because the native PDBs created by the R2R compiler complement the IL PDBs
+      and do not replace them. IL PDBs are still required for debugging. Native PDBs emitted by the R2R compiler are
+      only used for profiling purposes.
+      -->
+      <ResolvedFileToPublish Remove="@(_ReadyToRunCompositeBuildInput)" />
+      <ResolvedFileToPublish Remove="@(_ReadyToRunCompileList)" />
+      <ResolvedFileToPublish Include="@(_ReadyToRunFilesToPublish)" />
+    </ItemGroup>
+
+  </Target>
+
+  <!--
+    ============================================================
+                                        _PrepareForReadyToRunCompilation
+
+    Prepare build for ReadyToRun compilations. Builds list of assemblies to compile, and computes paths to ReadyToRun compiler bits
+    ============================================================
+    -->
+  <UsingTask Condition="'$(Crossgen2TasksOverriden)' != 'true'"  TaskName="PrepareForReadyToRunCompilation" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)"/>
+  <Target Name="_PrepareForReadyToRunCompilation" DependsOnTargets="ResolveReadyToRunCompilers;_ComputeManagedRuntimePackAssemblies;_ComputeAssembliesToPostprocessOnPublish">
+
+    <PropertyGroup>
+      <_ReadyToRunOutputPath>$(IntermediateOutputPath)R2R</_ReadyToRunOutputPath>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(_ReadyToRunOutputPath)" />
+
+    <ItemGroup>
+      <_ReadyToRunImplementationAssemblies Include="@(ResolvedFileToPublish->WithMetadataValue('PostprocessAssembly', 'true'))" />
+    </ItemGroup>
+
+    <!-- Even if app is not self-contained, crossgen requires closure of implementation assemblies. Resolve conflicts
+         of the runtime pack assets as though we were copying them locally, and add them to the R2R implementation
+         assembly list. -->
+    <ItemGroup Condition="'$(SelfContained)' != 'true'">
+      <_ReadyToRunImplementationAssemblies Include="@(_ManagedRuntimePackAssembly)" ReferenceOnly="true" />
+    </ItemGroup>
+
+    <ResolvePackageFileConflicts Condition="'$(SelfContained)' != 'true'"
+                                 ReferenceCopyLocalPaths="@(_ReadyToRunImplementationAssemblies)">
+      <Output TaskParameter="ReferenceCopyLocalPathsWithoutConflicts" ItemName="_ReadyToRunImplementationAssembliesWithoutConflicts" />
+    </ResolvePackageFileConflicts>
+
+    <ItemGroup Condition="'$(SelfContained)' != 'true'">
+      <_ReadyToRunImplementationAssemblies Remove="@(_ReadyToRunImplementationAssemblies)" />
+      <_ReadyToRunImplementationAssemblies Include="@(_ReadyToRunImplementationAssembliesWithoutConflicts)" />
+    </ItemGroup>
+
+    <PrepareForReadyToRunCompilation CrossgenTool="@(CrossgenTool)"
+                                     Crossgen2Tool="@(Crossgen2Tool)"
+                                     OutputPath="$(_ReadyToRunOutputPath)"
+                                     MainAssembly="@(IntermediateAssembly)"
+                                     Assemblies="@(_ReadyToRunImplementationAssemblies)"
+                                     ExcludeList="@(PublishReadyToRunExclude)"
+                                     EmitSymbols="$(PublishReadyToRunEmitSymbols)"
+                                     IncludeSymbolsInSingleFile="$(IncludeSymbolsInSingleFile)"
+                                     ReadyToRunUseCrossgen2="$(PublishReadyToRunUseCrossgen2)"
+                                     Crossgen2Composite="$(PublishReadyToRunComposite)"
+                                     PublishReadyToRunCompositeExclusions="@(PublishReadyToRunCompositeExclusions)">
+
+      <Output TaskParameter="ReadyToRunCompileList" ItemName="_ReadyToRunCompileList" />
+      <Output TaskParameter="ReadyToRunSymbolsCompileList" ItemName="_ReadyToRunSymbolsCompileList" />
+
+      <Output TaskParameter="ReadyToRunFilesToPublish" ItemName="_ReadyToRunFilesToPublish" />
+      <Output TaskParameter="ReadyToRunAssembliesToReference" ItemName="_ReadyToRunAssembliesToReference" />
+      <Output TaskParameter="ReadyToRunCompositeBuildReferences" ItemName="_ReadyToRunCompositeBuildReferences" />
+      <Output TaskParameter="ReadyToRunCompositeBuildInput" ItemName="_ReadyToRunCompositeBuildInput" />
+
+    </PrepareForReadyToRunCompilation>
+  </Target>
+
+  <UsingTask Condition="'$(Crossgen2TasksOverriden)' != 'true'" TaskName="ResolveReadyToRunCompilers" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
+  <Target Name="ResolveReadyToRunCompilers">
+    <ResolveReadyToRunCompilers RuntimePacks="@(ResolvedRuntimePack)"
+                                Crossgen2Packs="@(ResolvedCrossgen2Pack)"
+                                TargetingPacks="@(ResolvedTargetingPack)"
+                                RuntimeGraphPath="$(BundledRuntimeIdentifierGraphFile)"
+                                NETCoreSdkRuntimeIdentifier="$(NETCoreSdkRuntimeIdentifier)"
+                                EmitSymbols="$(PublishReadyToRunEmitSymbols)"
+                                ReadyToRunUseCrossgen2="$(PublishReadyToRunUseCrossgen2)">
+
+      <Output TaskParameter="CrossgenTool" ItemName="CrossgenTool" />
+      <Output TaskParameter="Crossgen2Tool" ItemName="Crossgen2Tool" />
+    </ResolveReadyToRunCompilers>
+  </Target>
+
+  <!--
+    ============================================================
+                                        _CreateR2RImages
+
+    Compiles assemblies in the _ReadyToRunCompileList list into ReadyToRun images
+    ============================================================
+    -->
+  <UsingTask Condition="'$(Crossgen2TasksOverriden)' != 'true'" TaskName="RunReadyToRunCompiler" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
+  <Target Name="_CreateR2RImages"
+          Inputs="@(_ReadyToRunCompileList);@(_ReadyToRunCompositeBuildInput)"
+          Outputs="%(_ReadyToRunCompileList.OutputR2RImage);%(_ReadyToRunCompileList.OutputPDBImage)">
+
+    <RunReadyToRunCompiler CrossgenTool="@(CrossgenTool)"
+                           Crossgen2Tool="@(Crossgen2Tool)"
+                           UseCrossgen2="$(PublishReadyToRunUseCrossgen2)"
+                           Crossgen2ExtraCommandLineArgs="$(PublishReadyToRunCrossgen2ExtraArgs)"
+                           ImplementationAssemblyReferences="@(_ReadyToRunAssembliesToReference)"
+                           ShowCompilerWarnings="$(PublishReadyToRunShowWarnings)"
+                           CompilationEntry="@(_ReadyToRunCompileList)"
+                           ContinueOnError="ErrorAndContinue"
+                           ReadyToRunCompositeBuildReferences="@(_ReadyToRunCompositeBuildReferences)"
+                           ReadyToRunCompositeBuildInput="@(_ReadyToRunCompositeBuildInput)">
+      <Output TaskParameter="ExitCode" PropertyName="_ReadyToRunCompilerExitCode" />
+      <Output TaskParameter="WarningsDetected" PropertyName="_ReadyToRunWarningsDetected" />
+    </RunReadyToRunCompiler>
+
+    <PropertyGroup>
+      <!-- Use distinct property here as any of the invocations can set it -->
+      <_ReadyToRunCompilerHasWarnings Condition="'$(_ReadyToRunWarningsDetected)' == 'true'">true</_ReadyToRunCompilerHasWarnings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ReadyToRunCompilationFailures Condition="'$(_ReadyToRunCompilerExitCode)' != '' And $(_ReadyToRunCompilerExitCode) != 0"
+                                      Include="@(_ReadyToRunCompileList)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    ============================================================
+                                        _CreateR2RSymbols
+
+    Emit native symbols for ReadyToRun images in the _ReadyToRunSymbolsCompileList list
+    ============================================================
+    -->
+  <Target Name="_CreateR2RSymbols"
+          Inputs="@(_ReadyToRunSymbolsCompileList)"
+          Outputs="%(_ReadyToRunSymbolsCompileList.OutputPDBImage)"
+          Condition="'$(PublishReadyToRunUseCrossgen2)' != 'true' or '@(Crossgen2Tool -> '%(IsVersion5)')' == 'true'">
+    <RunReadyToRunCompiler CrossgenTool="@(CrossgenTool)"
+                           Crossgen2Tool="@(Crossgen2Tool)"
+                           UseCrossgen2="$(PublishReadyToRunUseCrossgen2)"
+                           Crossgen2ExtraCommandLineArgs="$(PublishReadyToRunCrossgen2ExtraArgs)"
+                           ImplementationAssemblyReferences="@(_ReadyToRunAssembliesToReference)"
+                           ShowCompilerWarnings="$(PublishReadyToRunShowWarnings)"
+                           CompilationEntry="@(_ReadyToRunSymbolsCompileList)"
+                           ContinueOnError="ErrorAndContinue">
+      <Output TaskParameter="ExitCode" PropertyName="_ReadyToRunCompilerExitCode" />
+      <Output TaskParameter="WarningsDetected" PropertyName="_ReadyToRunWarningsDetected" />
+    </RunReadyToRunCompiler>
+
+    <PropertyGroup>
+      <!-- Use distinct property here as any of the invocations can set it -->
+      <_ReadyToRunCompilerHasWarnings Condition="'$(_ReadyToRunWarningsDetected)' == 'true'">true</_ReadyToRunCompilerHasWarnings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ReadyToRunCompilationFailures Condition="'$(_ReadyToRunCompilerExitCode)' != '' And $(_ReadyToRunCompilerExitCode) != 0"
+                                      Include="@(_ReadyToRunSymbolsCompileList)" />
+    </ItemGroup>
+  </Target>
 </Project>

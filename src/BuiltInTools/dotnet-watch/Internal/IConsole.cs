@@ -13,6 +13,7 @@ namespace Microsoft.Extensions.Tools.Internal
     public interface IConsole
     {
         event ConsoleCancelEventHandler CancelKeyPress;
+        event Action<ConsoleKeyInfo> KeyPressed;
         TextWriter Out { get; }
         TextWriter Error { get; }
         TextReader In { get; }
@@ -21,5 +22,6 @@ namespace Microsoft.Extensions.Tools.Internal
         bool IsErrorRedirected { get; }
         ConsoleColor ForegroundColor { get; set; }
         void ResetColor();
+        void Clear();
     }
 }

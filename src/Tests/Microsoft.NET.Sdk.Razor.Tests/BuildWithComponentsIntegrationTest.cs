@@ -13,7 +13,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.NET.Sdk.Razor.Tests
 {
-    public class BuildWithComponentsIntegrationTest : RazorSdkTest
+    public class BuildWithComponentsIntegrationTest : AspNetSdkTest
     {
         public BuildWithComponentsIntegrationTest(ITestOutputHelper log) : base(log) {}
 
@@ -27,7 +27,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         public void Building_NetstandardComponentLibrary()
         {
             var testAsset = "RazorComponentLibrary";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
 
             // Build
             var build = new BuildCommand(projectDirectory);
@@ -45,7 +45,7 @@ namespace Microsoft.NET.Sdk.Razor.Tests
         private void Build_ComponentsWorks()
         {
             var testAsset = "RazorMvcWithComponents";
-            var projectDirectory = CreateRazorSdkTestAsset(testAsset);
+            var projectDirectory = CreateAspNetSdkTestAsset(testAsset);
 
             var build = new BuildCommand(projectDirectory);
             build.Execute().Should().Pass();
@@ -54,21 +54,16 @@ namespace Microsoft.NET.Sdk.Razor.Tests
 
             new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).Should().Exist();
             new FileInfo(Path.Combine(outputPath, "MvcWithComponents.pdb")).Should().Exist();
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.dll")).Should().Exist();
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.pdb")).Should().Exist();
+            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.dll")).Should().NotExist();
+            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.pdb")).Should().NotExist();
 
             new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().ContainType("MvcWithComponents.TestComponent");
             new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().ContainType("MvcWithComponents.Views.Shared.NavMenu");
 
-            // This is a component file with a .cshtml extension. It should appear in the main assembly, but not in the views dll.
+            // Components should appear in the app assembly.
             new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().ContainType("MvcWithComponents.Components.Counter");
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.dll")).AssemblyShould().NotContainType("MvcWithComponents.Components.Counter");
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.dll")).AssemblyShould().NotContainType("AspNetCore.Components_Counter");
-
-            // Verify a regular View appears in the views dll, but not in the main assembly.
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().NotContainType("AspNetCore.Views.Home.Index");
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().NotContainType("AspNetCore.Views_Home_Index");
-            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.Views.dll")).AssemblyShould().ContainType("AspNetCore.Views_Home_Index");
+            // Views should also appear in the app assembly.
+            new FileInfo(Path.Combine(outputPath, "MvcWithComponents.dll")).AssemblyShould().ContainType("AspNetCoreGeneratedDocument.Views_Home_Index");
         }
     }
 }

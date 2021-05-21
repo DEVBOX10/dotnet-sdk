@@ -22,7 +22,7 @@ using ResourceHashesByNameDictionary = System.Collections.Generic.Dictionary<str
 
 namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
 {
-    public class WasmPublishIntegrationTest : BlazorWasmSdkTest
+    public class WasmPublishIntegrationTest : AspNetSdkTest
     {
         public WasmPublishIntegrationTest(ITestOutputHelper log) : base(log) { }
 
@@ -31,10 +31,11 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmMinimal";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, testInstance.TestRoot);
-            publishCommand.Execute().Should().Pass();
+            publishCommand.Execute().Should().Pass()
+                .And.NotHaveStdOutContaining("warning IL");
 
             var publishDirectory = publishCommand.GetOutputDirectory(DefaultTfm);
 
@@ -62,7 +63,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorwasm"));
             publishCommand.Execute().Should().Pass();
@@ -107,7 +108,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
             File.WriteAllText(Path.Combine(testInstance.TestRoot, "blazorwasm", "App.razor.css"), "h1 { font-size: 16px; }");
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorwasm"));
@@ -149,7 +150,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
             File.WriteAllText(Path.Combine(testInstance.TestRoot, "blazorwasm", "App.razor.css"), "h1 { font-size: 16px; }");
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorwasm"));
@@ -185,7 +186,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var webConfigContents = "test webconfig contents";
             File.WriteAllText(Path.Combine(testInstance.TestRoot, "blazorwasm", "web.config"), webConfigContents);
@@ -205,7 +206,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var buildCommand = new BuildCommand(testInstance, "blazorwasm");
             buildCommand.Execute()
@@ -250,7 +251,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName, identifier: basePath);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -311,7 +312,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         public void Publish_Hosted_WithStaticWebBasePathWorks(string basePath)
         {
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName, identifier: basePath);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -377,7 +378,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -448,7 +449,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -488,7 +489,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorhosted"));
             publishCommand.Execute().Should().Pass();
@@ -571,7 +572,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var wwwroot = Path.Combine(testInstance.TestRoot, "blazorwasm", "wwwroot");
             File.WriteAllText(Path.Combine(wwwroot, "appsettings.json"), "Default settings");
@@ -604,7 +605,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -652,7 +653,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -752,7 +753,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var buildCommand = new BuildCommand(testInstance, "blazorhosted");
             buildCommand.Execute().Should().Pass();
@@ -805,7 +806,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
             // Simulates publishing the same way VS does by setting BuildProjectReferences=false.
             // Arrange
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             // VS builds projects individually and then a publish with BuildDependencies=false, but building the main project is a close enough approximation for this test.
             var buildCommand = new BuildCommand(testInstance, "blazorwasm");
@@ -888,7 +889,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Simulates publishing the same way VS does by setting BuildProjectReferences=false.
             var testAppName = "BlazorHosted";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
             File.WriteAllText(Path.Combine(testInstance.TestRoot, "blazorwasm", "App.razor.css"), "h1 { font-size: 16px; }");
 
             // VS builds projects individually and then a publish with BuildDependencies=false, but building the main project is a close enough approximation for this test.
@@ -979,7 +980,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         public void Publish_HostedApp_VisualStudio_WithSatelliteAssemblies()
         {
             var testAppName = "BlazorWasmWithLibrary";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((path, project) =>
             {
@@ -1027,7 +1028,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHostedRID";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorhosted"));
             publishCommand.Execute("/p:RuntimeIdentifier=linux-x64").Should().Pass();
@@ -1040,7 +1041,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorHostedRID";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "blazorhosted"));
             publishCommand.Execute().Should().Pass();
@@ -1129,7 +1130,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
         {
             // Arrange
             var testAppName = "BlazorWasmMinimal";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             testInstance.WithProjectChanges((project) =>
             {
@@ -1168,7 +1169,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
             // Regression test for https://github.com/dotnet/aspnetcore/issues/29264
             // Arrange
             var testAppName = "BlazorMultiApp";
-            var testInstance = CreateBlazorWasmSdkTestAsset(testAppName);
+            var testInstance = CreateAspNetSdkTestAsset(testAppName);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testInstance.TestRoot, "BlazorMultipleApps.Server"));
             publishCommand.Execute().Should().Pass();

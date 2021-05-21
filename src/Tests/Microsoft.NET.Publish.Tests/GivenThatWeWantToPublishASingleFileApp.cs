@@ -13,6 +13,7 @@ using Xunit.Abstractions;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.NET.Publish.Tests
 {
@@ -50,10 +51,10 @@ namespace Microsoft.NET.Publish.Tests
         {
         }
 
-        private PublishCommand GetPublishCommand()
+        private PublishCommand GetPublishCommand(string identifier = null, [CallerMemberName] string callingMethod = "")
         {
             var testAsset = _testAssetsManager
-               .CopyTestAsset(TestProjectName)
+               .CopyTestAsset(TestProjectName, callingMethod, identifier)
                .WithSource();
 
             // Create the following content:
@@ -76,7 +77,7 @@ namespace Microsoft.NET.Publish.Tests
         private string GetNativeDll(string baseName)
         {
             return RuntimeInformation.RuntimeIdentifier.StartsWith("win") ? baseName + ".dll" :
-                   RuntimeInformation.RuntimeIdentifier.StartsWith("osx") ? "lib" + baseName + ".dylib" :  "lib" + baseName + ".so";
+                   RuntimeInformation.RuntimeIdentifier.StartsWith("osx") ? "lib" + baseName + ".dylib" : "lib" + baseName + ".so";
         }
 
         private DirectoryInfo GetPublishDirectory(PublishCommand publishCommand, string targetFramework = "net5.0")
@@ -254,6 +255,30 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionFact("16.8.0")]
+        public void No_runtime_files_6_0()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "SingleFileTest",
+                TargetFrameworks = "net6.0",
+                IsExe = true,
+            };
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var publishCommand = new PublishCommand(testAsset);
+
+            publishCommand
+                .Execute(PublishSingleFile, RuntimeIdentifier)
+                .Should()
+                .Pass();
+
+            string[] expectedFiles = { $"{testProject.Name}{Constants.ExeSuffix}", $"{testProject.Name}.pdb" };
+            GetPublishDirectory(publishCommand, "net6.0")
+                .Should()
+                .OnlyHaveFiles(expectedFiles);
+        }
+
+        [RequiresMSBuildVersionFact("16.8.0")]
         public void It_generates_a_single_file_with_native_binaries_for_framework_dependent_apps()
         {
             var publishCommand = GetPublishCommand();
@@ -325,7 +350,7 @@ namespace Microsoft.NET.Publish.Tests
                 IsExe = true,
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
             var publishCommand = new PublishCommand(testAsset);
 
             publishCommand
@@ -382,7 +407,7 @@ namespace Microsoft.NET.Publish.Tests
                 IsExe = true,
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
             var publishCommand = new PublishCommand(testAsset);
 
             publishCommand
@@ -401,7 +426,7 @@ namespace Microsoft.NET.Publish.Tests
         [InlineData(ExcludeAlways, AlwaysContent)]
         public void It_generates_a_single_file_excluding_content(string exclusion, string content)
         {
-            var publishCommand = GetPublishCommand();
+            var publishCommand = GetPublishCommand(exclusion);
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier, IncludeAllContent, PlaceStamp, exclusion)
                 .Should()
@@ -505,14 +530,51 @@ namespace Microsoft.NET.Publish.Tests
         {
             var projectName = "ILLinkAnalyzerWarningsApp";
             var testProject = CreateTestProjectWithAnalyzerWarnings(targetFramework, projectName, true);
+            testProject.AdditionalProperties["PublishSingleFile"] = "true";
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
             publishCommand
                 .Execute(RuntimeIdentifier)
-                .Should()
-                .HaveStdOutContaining("(8,13): warning IL3000")
-                .And.HaveStdOutContaining("(9,13): warning IL3001");
+                .Should().Pass()
+                .And.HaveStdOutContaining("(9,13): warning IL3000")
+                .And.HaveStdOutContaining("(10,13): warning IL3001");
+        }
+
+        [RequiresMSBuildVersionTheory("16.8.0")]
+        [InlineData("net6.0")]
+        public void ILLink_linker_analyzer_warnings_are_not_produced(string targetFramework)
+        {
+            var projectName = "ILLinkAnalyzerWarningsApp";
+            var testProject = CreateTestProjectWithAnalyzerWarnings(targetFramework, projectName, true);
+            // Inactive linker settings should have no effect on the linker analyzer,
+            // unless PublishTrimmed is also set.
+            testProject.AdditionalProperties["PublishSingleFile"] = "true";
+            testProject.AdditionalProperties["SuppressTrimAnalysisWarnings"] = "false";
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+
+            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            publishCommand
+                .Execute(RuntimeIdentifier)
+                .Should().Pass()
+                .And.NotHaveStdOutContaining("IL2026");
+        }
+
+        [RequiresMSBuildVersionTheory("16.8.0")]
+        [InlineData("net6.0")]
+        public void ILLink_analyzer_warnings_are_produced_using_EnableSingleFileAnalyzer(string targetFramework)
+        {
+            var projectName = "ILLinkAnalyzerWarningsApp";
+            var testProject = CreateTestProjectWithAnalyzerWarnings(targetFramework, projectName, true);
+            testProject.AdditionalProperties["EnableSingleFileAnalyzer"] = "true";
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+
+            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            publishCommand
+                .Execute(RuntimeIdentifier)
+                .Should().Pass()
+                .And.HaveStdOutContaining("(9,13): warning IL3000")
+                .And.HaveStdOutContaining("(10,13): warning IL3001");
         }
 
         private TestProject CreateTestProjectWithAnalyzerWarnings(string targetFramework, string projectName, bool isExecutable)
@@ -526,6 +588,7 @@ namespace Microsoft.NET.Publish.Tests
 
             testProject.SourceFiles[$"{projectName}.cs"] = @"
 using System.Reflection;
+using System.Diagnostics.CodeAnalysis;
 class C
 {
     static void Main()
@@ -533,10 +596,15 @@ class C
         var a = Assembly.LoadFrom(""/some/path/not/in/bundle"");
         _ = a.Location;
         _ = a.GetFiles();
+        ProduceLinkerAnalysisWarning();
+    }
+
+    [RequiresUnreferencedCode(""Linker analysis warning"")]
+    static void ProduceLinkerAnalysisWarning()
+    {
     }
 }";
 
-            testProject.AdditionalProperties["PublishSingleFile"] = "true";
             return testProject;
         }
 
@@ -598,7 +666,7 @@ class C
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{selfContained}");
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: selfContained.ToString());
             var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute(PublishSingleFile, RuntimeIdentifier, IncludePdb)
@@ -606,6 +674,113 @@ class C
                 .Fail()
                 .And
                 .HaveStdOutContaining(Strings.CannotIncludeSymbolsInSingleFile);
+        }
+
+        [RequiresMSBuildVersionFact("16.8.0")]
+        public void It_errors_when_enabling_compression_targeting_net5()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "SingleFileTest",
+                TargetFrameworks = "net5.0",
+                IsExe = true,
+            };
+
+            testProject.AdditionalProperties.Add("EnableCompressionInSingleFile", "true");
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var publishCommand = new PublishCommand(testAsset);
+
+            publishCommand.Execute(PublishSingleFile, RuntimeIdentifier)
+                .Should()
+                .Fail()
+                .And
+                .HaveStdOutContaining(Strings.CompressionInSingleFileRequires60);
+        }
+
+        [RequiresMSBuildVersionFact("16.8.0")]
+        public void It_errors_when_enabling_compression_without_selfcontained()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "SingleFileTest",
+                TargetFrameworks = "net6.0",
+                IsExe = true,
+            };
+
+            testProject.AdditionalProperties.Add("SelfContained", "false");
+            testProject.AdditionalProperties.Add("EnableCompressionInSingleFile", "true");
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var publishCommand = new PublishCommand(testAsset);
+
+            publishCommand.Execute(PublishSingleFile, RuntimeIdentifier)
+                .Should()
+                .Fail()
+                .And
+                .HaveStdOutContaining(Strings.CompressionInSingleFileRequiresSelfContained);
+        }
+
+        [RequiresMSBuildVersionFact("16.8.0")]
+        public void It_compresses_single_file_as_directed()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "SingleFileTest",
+                TargetFrameworks = "net6.0",
+                IsExe = true,
+            };
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var publishCommand = new PublishCommand(testAsset);
+            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, "net6.0").FullName, $"SingleFileTest{Constants.ExeSuffix}");
+
+            publishCommand
+                .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative, "/p:EnableCompressionInSingleFile=false")
+                .Should()
+                .Pass();
+            var uncompressedSize = new FileInfo(singleFilePath).Length;
+
+            WaitForUtcNowToAdvance();
+
+            publishCommand
+                .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative, "/p:EnableCompressionInSingleFile=true")
+                .Should()
+                .Pass();
+            var compressedSize = new FileInfo(singleFilePath).Length;
+
+            uncompressedSize.Should().BeGreaterThan(compressedSize);
+        }
+
+        [RequiresMSBuildVersionFact("16.8.0")]
+        public void It_does_not_compress_single_file_by_default()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "SingleFileTest",
+                TargetFrameworks = "net6.0",
+                IsExe = true,
+            };
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var publishCommand = new PublishCommand(testAsset);
+            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, "net6.0").FullName, $"SingleFileTest{Constants.ExeSuffix}");
+
+            publishCommand
+                .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative, "/p:EnableCompressionInSingleFile=false")
+                .Should()
+                .Pass();
+            var uncompressedSize = new FileInfo(singleFilePath).Length;
+
+            WaitForUtcNowToAdvance();
+
+            publishCommand
+                .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative)
+                .Should()
+                .Pass();
+            var compressedSize = new FileInfo(singleFilePath).Length;
+
+            uncompressedSize.Should().Be(compressedSize);
         }
     }
 }

@@ -24,6 +24,7 @@ using Xunit;
 using Xunit.Abstractions;
 using Microsoft.NET.Build.Tasks;
 using NuGet.Versioning;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.NET.Build.Tests
 {
@@ -31,6 +32,15 @@ namespace Microsoft.NET.Build.Tests
     {
         public GivenThatWeWantToBuildANetCoreApp(ITestOutputHelper log) : base(log)
         {
+        }
+
+        private BuildCommand GetBuildCommand([CallerMemberName] string callingMethod = "")
+        {
+            var testAsset = _testAssetsManager
+               .CopyTestAsset("HelloWorldWithSubDirs", callingMethod)
+               .WithSource();
+
+            return new BuildCommand(testAsset);
         }
 
         [Theory]
@@ -206,9 +216,9 @@ namespace Microsoft.NET.Build.Tests
 
             string runtimeIdentifier = EnvironmentInfo.GetCompatibleRid(testProject.TargetFrameworks);
 
-            testProject.AdditionalProperties["RuntimeIdentifiers"] = runtimeIdentifier;            
+            testProject.AdditionalProperties["RuntimeIdentifiers"] = runtimeIdentifier;
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject)
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: allowMismatch.ToString())
                 .Restore(Log, testProject.Name);
 
             var buildCommand = new BuildCommand(testAsset);
@@ -367,6 +377,68 @@ public static class Program
         }
 
         [Theory]
+        [InlineData("netcoreapp2.0", true)]
+        [InlineData("netcoreapp3.0", true)]
+        [InlineData("net5.0", true)]
+        [InlineData("net6.0", false)]
+        public void It_stops_generating_runtimeconfig_dev_json_after_net6(string targetFramework, bool shouldGenerateRuntimeConfigDevJson)
+        {
+            TestProject proj = new TestProject()
+            {
+                Name = "NetCoreApp",
+                ProjectSdk = "Microsoft.NET.Sdk",
+                IsExe = true,
+                TargetFrameworks = targetFramework,
+                IsSdkProject = true
+            };
+
+            var buildCommand = new BuildCommand(_testAssetsManager.CreateTestProject(proj, identifier: targetFramework));
+
+            var runtimeconfigFile = Path.Combine(
+                buildCommand.GetOutputDirectory(targetFramework).FullName,
+                $"{proj.Name}.runtimeconfig.dev.json");
+
+            buildCommand.Execute().StdOut
+                        .Should()
+                        .NotContain("NETSDK1048");
+
+            File.Exists(runtimeconfigFile).Should().Be(shouldGenerateRuntimeConfigDevJson);
+        }
+
+        [Theory]
+        [InlineData("netcoreapp2.0")]
+        [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
+        public void It_stops_generating_runtimeconfig_dev_json_after_net6_allow_property_override(string targetFramework)
+        {
+            TestProject proj = new TestProject()
+            {
+                Name = "NetCoreApp",
+                ProjectSdk = "Microsoft.NET.Sdk",
+                IsExe = true,
+                TargetFrameworks = targetFramework,
+                IsSdkProject = true
+            };
+
+            var buildCommand = new BuildCommand(_testAssetsManager.CreateTestProject(proj, identifier: targetFramework));
+            var runtimeconfigFile = Path.Combine(
+                buildCommand.GetOutputDirectory(targetFramework).FullName,
+                $"{proj.Name}.runtimeconfig.dev.json");
+
+            // GenerateRuntimeConfigDevFile overrides default behavior
+            buildCommand.Execute("/p:GenerateRuntimeConfigDevFile=true").StdOut
+                        .Should()
+                        .NotContain("NETSDK1048"); ;
+            File.Exists(runtimeconfigFile).Should().BeTrue();
+
+            buildCommand.Execute("/p:GenerateRuntimeConfigDevFile=false").StdOut
+                        .Should()
+                        .NotContain("NETSDK1048"); ;
+            File.Exists(runtimeconfigFile).Should().BeFalse();
+        }
+
+        [Theory]
         [InlineData("netcoreapp2.0")]
         [InlineData("netcoreapp3.0")]
         public void It_trims_conflicts_from_the_deps_file(string targetFramework)
@@ -445,7 +517,7 @@ public static class Program
                 RuntimeIdentifier = runtimeIdentifier
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(project);
+            var testAsset = _testAssetsManager.CreateTestProject(project, identifier: isSelfContained.ToString());
 
             var buildCommand = new BuildCommand(testAsset);
 
@@ -777,5 +849,24 @@ class Program
             depsFileLastWriteTime.Should().NotBe(File.GetLastWriteTimeUtc(depsFilePath));
             runtimeConfigLastWriteTime.Should().NotBe(File.GetLastWriteTimeUtc(runtimeConfigPath));
         }
+
+        [Fact]
+        public void It_passes_when_building_single_file_app_without_rid()
+        {
+            GetBuildCommand()
+                .Execute("/p:PublishSingleFile=true")
+                .Should()
+                .Pass();
+        }
+
+        [Fact]
+        public void It_errors_when_publishing_single_file_without_apphost()
+        {
+            GetBuildCommand()
+                .Execute("/p:PublishSingleFile=true", "/p:SelfContained=false", "/p:UseAppHost=false")
+                .Should()
+                .Pass();
+        }
+
     }
 }
