@@ -7,12 +7,14 @@ using Microsoft.DotNet.Workloads.Workload.Install;
 using static Microsoft.NET.Sdk.WorkloadManifestReader.WorkloadResolver;
 using Microsoft.DotNet.Workloads.Workload.Install.InstallRecord;
 using Microsoft.Extensions.EnvironmentAbstractions;
+using System.Linq;
+using Microsoft.NET.Sdk.WorkloadManifestReader;
 
 namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 {
     internal class MockPackWorkloadInstaller : IWorkloadPackInstaller
     {
-        public IList<PackInfo> InstalledPacks = new List<PackInfo>();
+        public IList<PackInfo> InstalledPacks;
         public IList<PackInfo> RolledBackPacks = new List<PackInfo>();
         public IList<(ManifestId manifestId, ManifestVersion manifestVersion, SdkFeatureBand sdkFeatureBand, DirectoryPath? offlineCache)> InstalledManifests = 
             new List<(ManifestId, ManifestVersion, SdkFeatureBand, DirectoryPath?)>();
@@ -21,17 +23,24 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
         public bool GarbageCollectionCalled = false;
         public MockInstallationRecordRepository InstallationRecordRepository;
         public bool FailingRollback;
+        private readonly string FailingPack;
 
-        public MockPackWorkloadInstaller(string failingWorkload = null, bool failingRollback = false, IList<WorkloadId> installedWorkloads = null)
+        public MockPackWorkloadInstaller(string failingWorkload = null, string failingPack = null, bool failingRollback = false, IList<WorkloadId> installedWorkloads = null, IList<PackInfo> installedPacks = null)
         {
             InstallationRecordRepository = new MockInstallationRecordRepository(failingWorkload, installedWorkloads);
             FailingRollback = failingRollback;
+            InstalledPacks = installedPacks ?? new List<PackInfo>();
+            FailingPack = failingPack;
         }
 
         public void InstallWorkloadPack(PackInfo packInfo, SdkFeatureBand sdkFeatureBand, DirectoryPath? offlineCache = null)
         {
-            InstalledPacks.Add(packInfo);
+            InstalledPacks = InstalledPacks.Append(packInfo).ToList();
             CachePath = offlineCache?.Value;
+            if (packInfo.Id.ToString().Equals(FailingPack))
+            {
+                throw new Exception($"Failing pack: {packInfo.Id}");
+            }
         }
 
         public void RollBackWorkloadPackInstall(PackInfo packInfo, SdkFeatureBand sdkFeatureBand)
@@ -73,7 +82,12 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             CachedPacks.Add(pack);
             CachePath = cachePath.Value;
         }
-		
+
+        public IEnumerable<(string, string)> GetInstalledPacks(SdkFeatureBand sdkFeatureBand)
+        {
+            return InstalledPacks.Select(pack => (pack.Id, pack.Version));
+        }
+
         public IWorkloadInstaller GetWorkloadInstaller() => throw new NotImplementedException();
     }
 
@@ -107,6 +121,9 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             return InstalledWorkloads;
         }
 
-        public IEnumerable<SdkFeatureBand> GetFeatureBandsWithInstallationRecords() => throw new NotImplementedException();
+        public IEnumerable<SdkFeatureBand> GetFeatureBandsWithInstallationRecords()
+        {
+            return Enumerable.Empty<SdkFeatureBand>();
+        }
     }
 }

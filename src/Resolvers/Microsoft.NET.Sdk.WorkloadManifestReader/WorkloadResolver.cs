@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Microsoft.DotNet.MSBuildSdkResolver;
 
 namespace Microsoft.NET.Sdk.WorkloadManifestReader
@@ -17,7 +15,7 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
     /// </remarks>
     public class WorkloadResolver : IWorkloadResolver
     {
-        private readonly Dictionary<WorkloadDefinitionId, WorkloadDefinition> _workloads = new Dictionary<WorkloadDefinitionId, WorkloadDefinition>();
+        private readonly Dictionary<WorkloadId, WorkloadDefinition> _workloads = new Dictionary<WorkloadId, WorkloadDefinition>();
         private readonly Dictionary<WorkloadPackId, WorkloadPack> _packs = new Dictionary<WorkloadPackId, WorkloadPack>();
         private readonly IWorkloadManifestProvider _manifestProvider;
         private string[] _currentRuntimeIdentifiers;
@@ -55,6 +53,22 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
                 currentRuntimeIdentifiers = new[] { "win-x64", "win", "any", "base" };
             }
             return new WorkloadResolver(manifestProvider, dotNetRootPaths, currentRuntimeIdentifiers);
+        }
+
+        public WorkloadResolver CreateTempDirResolver(IWorkloadManifestProvider manifestProvider, string dotnetRootPath, string sdkVersion)
+        {
+            var packRootEnvironmentVariable = Environment.GetEnvironmentVariable("DOTNETSDK_WORKLOAD_PACK_ROOTS");
+            string[] dotnetRootPaths;
+            if (!string.IsNullOrEmpty(packRootEnvironmentVariable))
+            {
+                dotnetRootPaths = packRootEnvironmentVariable.Split(Path.DirectorySeparatorChar).Append(dotnetRootPath).ToArray();
+            }
+            else
+            {
+                dotnetRootPaths = new[] { dotnetRootPath };
+            }
+
+            return new WorkloadResolver(manifestProvider, dotnetRootPaths, _currentRuntimeIdentifiers);
         }
 
         private WorkloadResolver(IWorkloadManifestProvider manifestProvider, string [] dotnetRootPaths, string [] currentRuntimeIdentifiers)
@@ -265,11 +279,11 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
                 throw new ArgumentException($"'{nameof(workloadId)}' cannot be null or empty", nameof(workloadId));
             }
 
-            var id = new WorkloadDefinitionId(workloadId);
+            var id = new WorkloadId(workloadId);
 
             if (!_workloads.TryGetValue(id, out var workload))
             {
-                throw new Exception("Workload not found");
+                throw new Exception($"Workload not found: {id}. Known workloads: {string.Join(" ", _workloads.Select(workload => workload.Key.ToString()))}");
             }
 
             if (workload.Extends?.Count > 0)
@@ -284,9 +298,9 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
 
         internal IEnumerable<WorkloadPackId> GetPacksInWorkload(WorkloadDefinition workload)
         {
-            var dedup = new HashSet<WorkloadDefinitionId>();
+            var dedup = new HashSet<WorkloadId>();
 
-            IEnumerable<WorkloadPackId> ExpandPacks (WorkloadDefinitionId workloadId)
+            IEnumerable<WorkloadPackId> ExpandPacks (WorkloadId workloadId)
             {
                 if (!_workloads.TryGetValue (workloadId, out var workloadInfo))
                 {
@@ -364,6 +378,14 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
             );
         }
 
+        /// <summary>
+        /// Returns the list of workloads defined by the manifests on disk
+        /// </summary>
+        public IEnumerable<WorkloadDefinition> GetAvaliableWorkloads()
+        {
+            return _workloads.Values;
+        }
+
         public class PackInfo
         {
             public PackInfo(string id, string version, WorkloadPackKind kind, string path, string resolvedPackageId)
@@ -410,6 +432,30 @@ namespace Microsoft.NET.Sdk.WorkloadManifestReader
 
             public string Id { get; }
             public string? Description { get; }
+        }
+
+        public WorkloadInfo GetWorkloadInfo(WorkloadId WorkloadId)
+        {
+            if (!_workloads.TryGetValue(WorkloadId, out var workload))
+            {
+                throw new Exception("Workload not found");
+            }
+
+            return new WorkloadInfo(workload.Id.ToString(), workload.Description);
+        }
+
+        public bool IsWorkloadPlatformCompatible(WorkloadId workloadId)
+        {
+            var workloadDef = GetAvaliableWorkloads().FirstOrDefault(workload => workload.Id.ToString().Equals(workloadId.ToString()));
+            if (workloadDef == null)
+            {
+                throw new Exception("Workload not found");
+            }
+            if (workloadDef.Platforms == null)
+            {
+                return true;
+            }
+            return workloadDef.Platforms.Any(supportedPlatform => _currentRuntimeIdentifiers.Contains(supportedPlatform));
         }
     }
 }

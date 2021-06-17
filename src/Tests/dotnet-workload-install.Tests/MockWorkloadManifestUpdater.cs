@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.DotNet.Workloads.Workload.Install;
 using Microsoft.Extensions.EnvironmentAbstractions;
+using Microsoft.NET.Sdk.WorkloadManifestReader;
 
 namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 {
@@ -15,12 +16,12 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
         public int CalculateManifestUpdatesCallCount = 0;
         public int DownloadManifestPackagesCallCount = 0;
         public int ExtractManifestPackagesToTempDirCallCount = 0;
-        private IEnumerable<(ManifestId, ManifestVersion, ManifestVersion)> _manifestUpdates;
+        private IEnumerable<(ManifestId, ManifestVersion, ManifestVersion, Dictionary<WorkloadId, WorkloadDefinition> Workloads)> _manifestUpdates;
         private string _tempDirManifestPath;
 
-        public MockWorkloadManifestUpdater(IEnumerable<(ManifestId, ManifestVersion, ManifestVersion)> manifestUpdates = null, string tempDirManifestPath = null)
+        public MockWorkloadManifestUpdater(IEnumerable<(ManifestId, ManifestVersion, ManifestVersion, Dictionary<WorkloadId, WorkloadDefinition> Workloads)> manifestUpdates = null, string tempDirManifestPath = null)
         {
-            _manifestUpdates = manifestUpdates ?? new List<(ManifestId, ManifestVersion, ManifestVersion)>();
+            _manifestUpdates = manifestUpdates ?? new List<(ManifestId, ManifestVersion, ManifestVersion, Dictionary<WorkloadId, WorkloadDefinition> Workloads)>();
             _tempDirManifestPath = tempDirManifestPath;
         }
 
@@ -30,7 +31,11 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             return Task.CompletedTask;
         }
 
-        public IEnumerable<(ManifestId, ManifestVersion, ManifestVersion)> CalculateManifestUpdates()
+        public IEnumerable<(
+            ManifestId manifestId, 
+            ManifestVersion existingVersion, 
+            ManifestVersion newVersion,
+            Dictionary<WorkloadId, WorkloadDefinition> Workloads)> CalculateManifestUpdates()
         {
             CalculateManifestUpdatesCallCount++;
             return _manifestUpdates;
@@ -39,7 +44,7 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
         public Task<IEnumerable<string>> DownloadManifestPackagesAsync(bool includePreviews, DirectoryPath downloadPath)
         {
             DownloadManifestPackagesCallCount++;
-            return Task.FromResult(new List<string>() as IEnumerable<string>);
+            return Task.FromResult(new List<string>() { "fake pack path" } as IEnumerable<string>);
         }
 
         public Task ExtractManifestPackagesToTempDirAsync(IEnumerable<string> manifestPackages, DirectoryPath tempDir)

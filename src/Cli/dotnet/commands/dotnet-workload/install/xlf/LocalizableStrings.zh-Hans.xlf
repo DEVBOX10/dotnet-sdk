@@ -17,6 +17,11 @@
         <target state="new">Package {0} version {1} does not exist in offline cache {2}.</target>
         <note />
       </trans-unit>
+      <trans-unit id="DeletingWorkloadPack">
+        <source>Uninstalling workload pack {0} version {1}.</source>
+        <target state="new">Uninstalling workload pack {0} version {1}.</target>
+        <note />
+      </trans-unit>
       <trans-unit id="DownloadToCacheOptionDescription">
         <source>Download packages needed to install a workload to a folder which can be used for offline installation.</source>
         <target state="new">Download packages needed to install a workload to a folder which can be used for offline installation.</target>
@@ -57,9 +62,19 @@
         <target state="new">Garbage collecting for SDK feature bands {0}...</target>
         <note />
       </trans-unit>
+      <trans-unit id="InadequatePermissions">
+        <source>Inadequate permissions to access, please elevate to run this command.</source>
+        <target state="new">Inadequate permissions to access, please elevate to run this command.</target>
+        <note />
+      </trans-unit>
       <trans-unit id="IncludePreviewOptionDescription">
         <source>Allow prerelease workload manifests.</source>
         <target state="new">Allow prerelease workload manifests.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IncompatibleManifests">
+        <source>The current SDK is not compatible with workload manifests of SDK version {0}.</source>
+        <target state="new">The current SDK is not compatible with workload manifests of SDK version {0}.</target>
         <note />
       </trans-unit>
       <trans-unit id="InstallationSucceeded">
@@ -102,6 +117,16 @@
         <target state="new">No manifest with id {0} exists.</target>
         <note />
       </trans-unit>
+      <trans-unit id="NoManifestsExistForFeatureBand">
+        <source>No manifests exist for SDK version {0}.</source>
+        <target state="new">No manifests exist for SDK version {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OSDoesNotSupportMsi">
+        <source>MSI installations are only supported on Windows.</source>
+        <target state="new">MSI installations are only supported on Windows.</target>
+        <note />
+      </trans-unit>
       <trans-unit id="ResolvingPackageUrls">
         <source>Resolving package urls for workload(s) {0}...</source>
         <target state="new">Resolving package urls for workload(s) {0}...</target>
@@ -125,6 +150,16 @@
       <trans-unit id="SkipManifestUpdateOptionDescription">
         <source>Skip updating the workload manifests.</source>
         <target state="new">Skip updating the workload manifests.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SkippingManifestUpdate">
+        <source>Manifest packages were not found, skipping manifest update...</source>
+        <target state="new">Manifest packages were not found, skipping manifest update...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TempDirOptionDescription">
+        <source>Configure the temporary directory used for this command (must be secure).</source>
+        <target state="new">Configure the temporary directory used for this command (must be secure).</target>
         <note />
       </trans-unit>
       <trans-unit id="UnrecognizedPackError">
@@ -198,13 +233,23 @@
         <note />
       </trans-unit>
       <trans-unit id="WorkloadIdArgumentName">
-        <source>PACKAGE_ID</source>
-        <target state="new">PACKAGE_ID</target>
+        <source>WORKLOAD_ID</source>
+        <target state="new">WORKLOAD_ID</target>
         <note />
       </trans-unit>
       <trans-unit id="WorkloadInstallationFailed">
         <source>Workload installation failed: {0}</source>
         <target state="new">Workload installation failed: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="WorkloadNotRecognized">
+        <source>Workload with id {0} is not recognized.</source>
+        <target state="new">Workload with id {0} is not recognized.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="WorkloadNotSupportedOnPlatform">
+        <source>Workload with id {0} is not supported on this platform.</source>
+        <target state="new">Workload with id {0} is not supported on this platform.</target>
         <note />
       </trans-unit>
       <trans-unit id="WorkloadPackAlreadyInstalledMessage">

@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="WorkloadIdArgumentName" xml:space="preserve">
-    <value>PACKAGE_ID</value>
+    <value>WORKLOAD_ID</value>
   </data>
   <data name="WorkloadIdArgumentDescription" xml:space="preserve">
     <value>The NuGet Package Id of the workload to install.</value>
@@ -189,6 +189,9 @@
   <data name="FromCacheOptionDescription" xml:space="preserve">
     <value>Complete the operation from cache (offline).</value>
   </data>
+  <data name="TempDirOptionDescription" xml:space="preserve">
+    <value>Configure the temporary directory used for this command (must be secure).</value>
+  </data>
   <data name="UnrecognizedPackError" xml:space="preserve">
     <value>Pack Id {0} unrecognized.</value>
   </data>
@@ -254,5 +257,29 @@
   </data>
   <data name="FailedToGetPackageManifestUrl" xml:space="preserve">
     <value>Failed to resolve manifest package url {0}.</value>
+  </data>
+  <data name="OSDoesNotSupportMsi" xml:space="preserve">
+    <value>MSI installations are only supported on Windows.</value>
+  </data>
+  <data name="DeletingWorkloadPack" xml:space="preserve">
+    <value>Uninstalling workload pack {0} version {1}.</value>
+  </data>
+  <data name="SkippingManifestUpdate" xml:space="preserve">
+    <value>Manifest packages were not found, skipping manifest update...</value>
+  </data>
+  <data name="NoManifestsExistForFeatureBand" xml:space="preserve">
+    <value>No manifests exist for SDK version {0}.</value>
+  </data>
+  <data name="IncompatibleManifests" xml:space="preserve">
+    <value>The current SDK is not compatible with workload manifests of SDK version {0}.</value>
+  </data>
+  <data name="InadequatePermissions" xml:space="preserve">
+    <value>Inadequate permissions to access, please elevate to run this command.</value>
+  </data>
+  <data name="WorkloadNotSupportedOnPlatform" xml:space="preserve">
+    <value>Workload with id {0} is not supported on this platform.</value>
+  </data>
+  <data name="WorkloadNotRecognized" xml:space="preserve">
+    <value>Workload with id {0} is not recognized.</value>
   </data>
 </root>

@@ -1,9 +1,11 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.NET.Sdk.WorkloadManifestReader;
 
 namespace Microsoft.DotNet.Workloads.Workload.Install.InstallRecord
 {
@@ -65,6 +67,8 @@ namespace Microsoft.DotNet.Workloads.Workload.Install.InstallRecord
             var path = Path.Combine(_workloadMetadataDir, featureBand.ToString(), _installedWorkloadDir, workloadId.ToString());
             if (File.Exists(path))
             {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
                 File.Delete(path);
             }
         }

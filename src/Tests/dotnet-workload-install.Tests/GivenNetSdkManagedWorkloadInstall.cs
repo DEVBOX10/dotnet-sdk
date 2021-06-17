@@ -119,9 +119,10 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 
             var mockNugetInstaller = nugetInstaller as MockNuGetPackageDownloader;
             mockNugetInstaller.DownloadCallParams.Count.Should().Be(1);
-            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), null as DirectoryPath?));
+            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), null as DirectoryPath?, null as PackageSourceLocation));
             mockNugetInstaller.ExtractCallParams.Count.Should().Be(1);
-            mockNugetInstaller.ExtractCallParams[0].ShouldBeEquivalentTo((mockNugetInstaller.DownloadCallResult[0], new DirectoryPath(Path.Combine(dotnetRoot, "metadata", "temp", $"{packInfo.Id}-{packInfo.Version}-extracted"))));
+            mockNugetInstaller.ExtractCallParams[0].Item1.Should().Be(mockNugetInstaller.DownloadCallResult[0]);
+            mockNugetInstaller.ExtractCallParams[0].Item2.ToString().Should().Contain($"{packInfo.Id}-{packInfo.Version}-extracted");
 
             var installationRecordPath = Path.Combine(dotnetRoot, "metadata", "workloads", "InstalledPacks", "v1", packInfo.Id, packInfo.Version, version);
             File.Exists(installationRecordPath).Should().BeTrue();
@@ -138,7 +139,7 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             installer.InstallWorkloadPack(packInfo, new SdkFeatureBand(version));
 
             (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams.Count.Should().Be(1);
-            (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), null as DirectoryPath?));
+            (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), null as DirectoryPath?, null as PackageSourceLocation));
             (nugetInstaller as MockNuGetPackageDownloader).ExtractCallParams.Count.Should().Be(0);
 
             var installationRecordPath = Path.Combine(dotnetRoot, "metadata", "workloads", "InstalledPacks", "v1", packInfo.Id, packInfo.Version, version);
@@ -157,7 +158,21 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             installer.InstallWorkloadPack(packInfo, new SdkFeatureBand(version));
 
             (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams.Count.Should().Be(1);
-            (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(alias), new NuGetVersion(packInfo.Version), null as DirectoryPath?));
+            (nugetInstaller as MockNuGetPackageDownloader).DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(alias), new NuGetVersion(packInfo.Version), null as DirectoryPath?, null as PackageSourceLocation));
+        }
+
+        [Fact]
+        public void GivenManagedInstallItHonorsNuGetSources()
+        {
+            var packageSource = new PackageSourceLocation(new FilePath("mock-file"));
+            var (dotnetRoot, installer, nugetInstaller) = GetTestInstaller(packageSourceLocation: packageSource);
+            var packInfo = new PackInfo("Xamarin.Android.Sdk", "8.4.7", WorkloadPackKind.Sdk, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Sdk", "8.4.7"), "Xamarin.Android.Sdk");
+            var version = "6.0.100";
+            installer.InstallWorkloadPack(packInfo, new SdkFeatureBand(version));
+
+            var mockNugetInstaller = nugetInstaller as MockNuGetPackageDownloader;
+            mockNugetInstaller.DownloadCallParams.Count.Should().Be(1);
+            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), null as DirectoryPath?, packageSource));
         }
 
         [Fact]
@@ -198,7 +213,7 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             var packs = new PackInfo[]
             {
                 new PackInfo("Xamarin.Android.Sdk", "8.4.7", WorkloadPackKind.Library, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Sdk", "8.4.7"), "Xamarin.Android.Sdk"),
-                new PackInfo("Xamarin.Android.Framework", "8.4", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Framework", "8.4"), "Xamarin.Android.Framework")
+                new PackInfo("Xamarin.Android.Framework", "8.4.0", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Framework", "8.4.0"), "Xamarin.Android.Framework")
             };
             var sdkVersions = new string[] { "6.0.100", "6.0.300" };
 
@@ -277,12 +292,12 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             var packs = new PackInfo[]
             {
                 new PackInfo("Xamarin.Android.Sdk", "8.4.7", WorkloadPackKind.Library, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Sdk", "8.4.7"), "Xamarin.Android.Sdk"),
-                new PackInfo("Xamarin.Android.Framework", "8.4", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Framework", "8.4"), "Xamarin.Android.Framework")
+                new PackInfo("Xamarin.Android.Framework", "8.4.0", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Xamarin.Android.Framework", "8.4.0"), "Xamarin.Android.Framework")
             };
             var packsToBeGarbageCollected = new PackInfo[]
             {
-                new PackInfo("Test.Pack.A", "1.0", WorkloadPackKind.Sdk, Path.Combine(dotnetRoot, "packs", "Test.Pack.A", "1.0"), "Test.Pack.A"),
-                new PackInfo("Test.Pack.B", "2.0", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Test.Pack.B", "2.0"), "Test.Pack.B"),
+                new PackInfo("Test.Pack.A", "1.0.0", WorkloadPackKind.Sdk, Path.Combine(dotnetRoot, "packs", "Test.Pack.A", "1.0.0"), "Test.Pack.A"),
+                new PackInfo("Test.Pack.B", "2.0.0", WorkloadPackKind.Framework, Path.Combine(dotnetRoot, "packs", "Test.Pack.B", "2.0.0"), "Test.Pack.B"),
             };
             var sdkVersions = new string[] { "6.0.100", "6.0.300" };
 
@@ -340,7 +355,8 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 
             var mockNugetInstaller = nugetDownloader as MockNuGetPackageDownloader;
             mockNugetInstaller.DownloadCallParams.Count.Should().Be(1);
-            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId($"{manifestId}.manifest-{featureBand}"), new NuGetVersion(manifestVersion.ToString()), null as DirectoryPath?));
+            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId($"{manifestId}.manifest-{featureBand}"),
+                new NuGetVersion(manifestVersion.ToString()), null as DirectoryPath?, null as PackageSourceLocation));
         }
 		
 	    [Fact]
@@ -354,7 +370,7 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 
             var mockNugetInstaller = nugetInstaller as MockNuGetPackageDownloader;
             mockNugetInstaller.DownloadCallParams.Count.Should().Be(1);
-            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), new DirectoryPath(cachePath) as DirectoryPath?));
+            mockNugetInstaller.DownloadCallParams[0].ShouldBeEquivalentTo((new PackageId(packInfo.Id), new NuGetVersion(packInfo.Version), new DirectoryPath(cachePath) as DirectoryPath?, null as PackageSourceLocation));
             Directory.Exists(cachePath).Should().BeTrue();
 
             // Should have only been downloaded, not installed
@@ -385,7 +401,8 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
 
             // Otherwise install should be normal
             mockNugetInstaller.ExtractCallParams.Count.Should().Be(1);
-            mockNugetInstaller.ExtractCallParams[0].ShouldBeEquivalentTo((nupkgPath, new DirectoryPath(Path.Combine(dotnetRoot, "metadata", "temp", $"{packInfo.Id}-{packInfo.Version}-extracted"))));
+            mockNugetInstaller.ExtractCallParams[0].Item1.Should().Be(nupkgPath);
+            mockNugetInstaller.ExtractCallParams[0].Item2.ToString().Should().Contain($"{packInfo.Id}-{packInfo.Version}-extracted");
             var installationRecordPath = Path.Combine(dotnetRoot, "metadata", "workloads", "InstalledPacks", "v1", packInfo.Id, packInfo.Version, version);
             File.Exists(installationRecordPath).Should().BeTrue();
             Directory.Exists(packInfo.Path).Should().BeTrue();
@@ -405,14 +422,15 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             exceptionThrown.Message.Should().Contain(cachePath);
         }
 
-        private (string, NetSdkManagedInstaller, INuGetPackageDownloader) GetTestInstaller([CallerMemberName] string testName = "", bool failingInstaller = false, string identifier = "", bool manifestDownload = false)
+        private (string, NetSdkManagedInstaller, INuGetPackageDownloader) GetTestInstaller([CallerMemberName] string testName = "", bool failingInstaller = false, string identifier = "", bool manifestDownload = false,
+            PackageSourceLocation packageSourceLocation = null)
         {
             var testDirectory = _testAssetsManager.CreateTestDirectory(testName, identifier: identifier).Path;
             var dotnetRoot = Path.Combine(testDirectory, "dotnet");
             INuGetPackageDownloader nugetInstaller = failingInstaller ? new FailingNuGetPackageDownloader(testDirectory) :  new MockNuGetPackageDownloader(dotnetRoot, manifestDownload);
             var workloadResolver = WorkloadResolver.CreateForTests(new MockManifestProvider(new[] { _manifestPath }), new string[] { dotnetRoot });
             var sdkFeatureBand = new SdkFeatureBand("6.0.100");
-            return (dotnetRoot, new NetSdkManagedInstaller(_reporter, sdkFeatureBand, workloadResolver, nugetInstaller, dotnetRoot), nugetInstaller);
+            return (dotnetRoot, new NetSdkManagedInstaller(_reporter, sdkFeatureBand, workloadResolver, nugetInstaller, dotnetRoot, packageSourceLocation: packageSourceLocation, tempDirPath: testDirectory), nugetInstaller);
         }
     }
 }
