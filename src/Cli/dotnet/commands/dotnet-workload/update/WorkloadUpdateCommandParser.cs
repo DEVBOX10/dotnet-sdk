@@ -10,7 +10,7 @@ namespace Microsoft.DotNet.Cli
     {
         public static readonly Option ConfigOption = WorkloadInstallCommandParser.ConfigOption;
 
-        public static readonly Option AddSourceOption = WorkloadInstallCommandParser.AddSourceOption;
+        public static readonly Option SourceOption = WorkloadInstallCommandParser.SourceOption;
 
         public static readonly Option VersionOption = WorkloadInstallCommandParser.VersionOption;
 
@@ -30,12 +30,14 @@ namespace Microsoft.DotNet.Cli
 
         public static readonly Option FromPreviousSdkOption = new Option<bool>("--from-previous-sdk", LocalizableStrings.FromPreviousSdkOptionDescription);
 
+        public static readonly Option AdManifestOnlyOption = new Option<bool>("--advertising-manifests-only", LocalizableStrings.AdManifestOnlyOptionDescription);
+
         public static Command GetCommand()
         {
             Command command = new("update", LocalizableStrings.CommandDescription);
 
             command.AddOption(ConfigOption);
-            command.AddOption(AddSourceOption);
+            command.AddOption(SourceOption);
             command.AddOption(VersionOption);
             command.AddOption(PrintDownloadLinkOnlyOption);
             command.AddOption(FromCacheOption);
@@ -43,10 +45,8 @@ namespace Microsoft.DotNet.Cli
             command.AddOption(DownloadToCacheOption);
             command.AddOption(TempDirOption);
             command.AddOption(FromPreviousSdkOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.DisableParallelOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.IgnoreFailedSourcesOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.NoCacheOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.InteractiveRestoreOption);
+            command.AddOption(AdManifestOnlyOption);
+            command.AddWorkloadCommandNuGetRestoreActionConfigOptions();
             command.AddOption(VerbosityOption);
 
             return command;

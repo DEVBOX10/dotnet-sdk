@@ -5,9 +5,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using Microsoft.Build.Framework;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.ApiCompatibility;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
+using Microsoft.DotNet.Compatibility.ErrorSuppression;
 
 namespace Microsoft.DotNet.PackageValidation
 {
@@ -41,17 +43,31 @@ namespace Microsoft.DotNet.PackageValidation
                     IAssemblySymbol leftSymbols = new AssemblySymbolLoader().LoadAssembly(apicompatTuples.assemblyName, leftAssemblyStream);
                     IAssemblySymbol rightSymbols = new AssemblySymbolLoader().LoadAssembly(apicompatTuples.assemblyName, rightAssemblyStream);
 
-                    IEnumerable<CompatDifference> differences = _differ.GetDifferences(leftSymbols, rightSymbols);
+                    _log.LogMessage(MessageImportance.Low, apicompatTuples.header);
 
-                    if (differences.Any())
+                    string leftName = apicompatTuples.leftAssemblyRelativePath;
+                    bool isBaselineSuppression = false;
+                    if (!apicompatTuples.leftAssemblyPackagePath.Equals(apicompatTuples.rightAssemblyPackagePath, System.StringComparison.InvariantCultureIgnoreCase))
                     {
-                        _log.LogError(null, apicompatTuples.compatibilityReason);
-                        _log.LogError(null, apicompatTuples.header);
+                        isBaselineSuppression = true;
+                        leftName = Resources.Baseline + " " + leftName;
                     }
+
+                    IEnumerable<CompatDifference> differences = _differ.GetDifferences(leftSymbols, rightSymbols, leftName: leftName, rightName: apicompatTuples.rightAssemblyRelativePath);
 
                     foreach (CompatDifference difference in differences)
                     {
-                        _log.LogError(difference.DiagnosticId, difference.Message);
+                        _log.LogError(
+                            new Suppression
+                            {
+                                DiagnosticId = difference.DiagnosticId,
+                                Target = difference.ReferenceId,
+                                Left = apicompatTuples.leftAssemblyRelativePath,
+                                Right = apicompatTuples.rightAssemblyRelativePath,
+                                IsBaselineSuppression = isBaselineSuppression
+                            },
+                            difference.DiagnosticId,
+                            difference.Message);
                     }
                 }
             }

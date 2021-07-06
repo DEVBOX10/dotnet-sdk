@@ -10,7 +10,7 @@ namespace Microsoft.DotNet.Cli
     {
         public static readonly Option ConfigOption = WorkloadInstallCommandParser.ConfigOption;
 
-        public static readonly Option AddSourceOption = WorkloadInstallCommandParser.AddSourceOption;
+        public static readonly Option SourceOption = WorkloadInstallCommandParser.SourceOption;
 
         public static readonly Option VerbosityOption = WorkloadInstallCommandParser.VerbosityOption;
 
@@ -19,11 +19,8 @@ namespace Microsoft.DotNet.Cli
             Command command = new Command("restore", LocalizableStrings.CommandDescription);
 
             command.AddOption(ConfigOption);
-            command.AddOption(AddSourceOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.DisableParallelOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.IgnoreFailedSourcesOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.NoCacheOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.InteractiveRestoreOption);
+            command.AddOption(SourceOption);
+            command.AddWorkloadCommandNuGetRestoreActionConfigOptions();
             command.AddOption(VerbosityOption);
 
             return command;

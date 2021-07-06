@@ -21,10 +21,10 @@ namespace Microsoft.DotNet.Cli
                 ArgumentHelpName = LocalizableStrings.ConfigFileOptionName
             };
 
-        public static readonly Option AddSourceOption =
-            new Option<string[]>("--add-source", LocalizableStrings.AddSourceOptionDescription)
+        public static readonly Option SourceOption =
+            new Option<string[]>(new string[] { "-s", "--source" }, LocalizableStrings.SourceOptionDescription)
             {
-                ArgumentHelpName = LocalizableStrings.AddSourceOptionName
+                ArgumentHelpName = LocalizableStrings.SourceOptionName
             }.AllowSingleArgPerToken();
 
         public static readonly Option PrintDownloadLinkOnlyOption =
@@ -59,17 +59,14 @@ namespace Microsoft.DotNet.Cli
             command.AddArgument(WorkloadIdArgument);
             command.AddOption(VersionOption);
             command.AddOption(ConfigOption);
-            command.AddOption(AddSourceOption);
+            command.AddOption(SourceOption);
             command.AddOption(SkipManifestUpdateOption);
             command.AddOption(PrintDownloadLinkOnlyOption);
             command.AddOption(FromCacheOption);
             command.AddOption(DownloadToCacheOption);
             command.AddOption(IncludePreviewOption);
             command.AddOption(TempDirOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.DisableParallelOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.IgnoreFailedSourcesOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.NoCacheOption);
-            command.AddOption(WorkloadCommandRestorePassThroughOptions.InteractiveRestoreOption);
+            command.AddWorkloadCommandNuGetRestoreActionConfigOptions();
             command.AddOption(VerbosityOption);
 
             return command;

@@ -46,9 +46,9 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
             _sdkVersion = WorkloadOptionsExtensions.GetValidatedSdkVersion(parseResult.ValueForOption<string>(WorkloadRepairCommandParser.VersionOption), version, _dotnetPath);
 
             var configOption = parseResult.ValueForOption<string>(WorkloadRepairCommandParser.ConfigOption);
-            var addSourceOption = parseResult.ValueForOption<string[]>(WorkloadRepairCommandParser.AddSourceOption);
-            _packageSourceLocation = string.IsNullOrEmpty(configOption) && (addSourceOption == null || !addSourceOption.Any()) ? null :
-                new PackageSourceLocation(string.IsNullOrEmpty(configOption) ? null : new FilePath(configOption), sourceFeedOverrides: addSourceOption);
+            var sourceOption = parseResult.ValueForOption<string[]>(WorkloadRepairCommandParser.SourceOption);
+            _packageSourceLocation = string.IsNullOrEmpty(configOption) && (sourceOption == null || !sourceOption.Any()) ? null :
+                new PackageSourceLocation(string.IsNullOrEmpty(configOption) ? null : new FilePath(configOption), sourceFeedOverrides: sourceOption);
 
             _workloadManifestProvider = new SdkDirectoryWorkloadManifestProvider(_dotnetPath, _sdkVersion.ToString());
             _workloadResolver = workloadResolver ?? WorkloadResolver.Create(_workloadManifestProvider, _dotnetPath, _sdkVersion.ToString());
@@ -61,9 +61,11 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
             nugetPackageDownloader ??= new NuGetPackageDownloader(
                 tempPackagesDir,
                 filePermissionSetter: null,
-                new FirstPartyNuGetPackageSigningVerifier(tempPackagesDir, nullLogger), nullLogger);
-            _workloadInstaller = workloadInstaller ?? 
-                WorkloadInstallerFactory.GetWorkloadInstaller(_reporter, sdkFeatureBand, _workloadResolver, _verbosity, nugetPackageDownloader, dotnetDir, tempDirPath, _packageSourceLocation);
+                new FirstPartyNuGetPackageSigningVerifier(tempPackagesDir, nullLogger), nullLogger, restoreActionConfig: _parseResult.ToRestoreActionConfig());
+            _workloadInstaller = workloadInstaller ??
+                                 WorkloadInstallerFactory.GetWorkloadInstaller(_reporter, sdkFeatureBand,
+                                     _workloadResolver, _verbosity, nugetPackageDownloader, dotnetDir, tempDirPath,
+                                     _packageSourceLocation, _parseResult.ToRestoreActionConfig());
         }
 
         public override int Execute()
