@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
   <file datatype="xml" source-language="en" target-language="zh-Hans" original="../Strings.resx">
     <body>
@@ -36,6 +36,11 @@
         <source>NETSDK1072: Unable to use '{0}' as application host executable because it's not a Windows executable for the CUI (Console) subsystem.</source>
         <target state="translated">NETSDK1072: 无法将“{0}”用作应用程序主机可执行文件，因为它不是 CUI (控制台)子系统的 Windows 可执行文件。</target>
         <note>{StrBegin="NETSDK1072: "}</note>
+      </trans-unit>
+      <trans-unit id="AppHostSigningFailed">
+        <source>NETSDK1177: Failed to sign apphost with error code {1}: {0}</source>
+        <target state="new">NETSDK1177: Failed to sign apphost with error code {1}: {0}</target>
+        <note>{StrBegin="NETSDK1177: "}</note>
       </trans-unit>
       <trans-unit id="AspNetCoreAllNotSupported">
         <source>NETSDK1079: The Microsoft.AspNetCore.All package is not supported when targeting .NET Core 3.0 or higher.  A FrameworkReference to Microsoft.AspNetCore.App should be used instead, and will be implicitly included by Microsoft.NET.Sdk.Web.</source>
@@ -164,7 +169,7 @@
       </trans-unit>
       <trans-unit id="CanOnlyHaveSingleFileWithNetCoreApp">
         <source>NETSDK1125: Publishing to a single-file is only supported for netcoreapp target.</source>
-        <target state="translated">NETSDK1125: netcoreapp 目标仅支持发布到单个文件。</target>
+        <target state="translated">NETSDK1125: 仅 netcoreapp 目标支持发布到单个文件。</target>
         <note>{StrBegin="NETSDK1125: "}</note>
       </trans-unit>
       <trans-unit id="ChoosingAssemblyVersion_Info">
@@ -879,6 +884,13 @@ The following are names of parameters or literal values and should not be transl
         <source>NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll. Please update to a newer .NET SDK in order to reference this assembly.</source>
         <target state="new">NETSDK1148: A referenced assembly was compiled using a newer version of Microsoft.Windows.SDK.NET.dll. Please update to a newer .NET SDK in order to reference this assembly.</target>
         <note>{StrBegin="NETSDK1148: "}</note>
+      </trans-unit>
+      <trans-unit id="WorkloadNotAvailable">
+        <source>NETSDK1178: The project depends on the following workload packs that do not exist in any of the workloads available in this installation: {0}
+You may need to build the project on another operating system or architecture, or update the .NET SDK.</source>
+        <target state="new">NETSDK1178: The project depends on the following workload packs that do not exist in any of the workloads available in this installation: {0}
+You may need to build the project on another operating system or architecture, or update the .NET SDK.</target>
+        <note>{StrBegin="NETSDK1178: "}</note>
       </trans-unit>
       <trans-unit id="WorkloadNotInstalled">
         <source>NETSDK1147: To build this project, the following workloads must be installed: {0}

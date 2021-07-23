@@ -30,6 +30,8 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
         private readonly string _fromCacheOption;
         private readonly string _downloadToCacheOption;
         private readonly bool _adManifestOnlyOption;
+        private readonly bool _printRollbackDefinitionOnly;
+        private readonly string _fromRollbackDefinition;
         private readonly PackageSourceLocation _packageSourceLocation;
         private readonly IReporter _reporter;
         private readonly bool _includePreviews;
@@ -72,6 +74,8 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
             _tempDirPath = tempDirPath ?? (string.IsNullOrWhiteSpace(parseResult.ValueForOption<string>(WorkloadUpdateCommandParser.TempDirOption)) ?
                 Path.GetTempPath() :
                 parseResult.ValueForOption<string>(WorkloadUpdateCommandParser.TempDirOption));
+            _printRollbackDefinitionOnly = parseResult.ValueForOption<bool>(WorkloadUpdateCommandParser.PrintRollbackOption);
+            _fromRollbackDefinition = parseResult.ValueForOption<string>(WorkloadUpdateCommandParser.FromRollbackFileOption);
 
             var configOption = parseResult.ValueForOption<string>(WorkloadUpdateCommandParser.ConfigOption);
             var sourceOption = parseResult.ValueForOption<string[]>(WorkloadUpdateCommandParser.SourceOption);
@@ -84,7 +88,8 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
             var restoreActionConfig = _parseResult.ToRestoreActionConfig();
             _workloadInstaller = workloadInstaller ?? WorkloadInstallerFactory.GetWorkloadInstaller(_reporter,
                 sdkFeatureBand, _workloadResolver, _verbosity, nugetPackageDownloader,
-                dotnetDir, _tempDirPath, packageSourceLocation: _packageSourceLocation, restoreActionConfig);
+                dotnetDir, _tempDirPath, packageSourceLocation: _packageSourceLocation, restoreActionConfig,
+                elevationRequired: !_printDownloadLinkOnly && string.IsNullOrWhiteSpace(_downloadToCacheOption));
             _userHome = userHome ?? CliFolderPathCalculator.DotnetHomePath;
             var tempPackagesDir = new DirectoryPath(Path.Combine(_tempDirPath, "dotnet-sdk-advertising-temp"));
             _nugetPackageDownloader = nugetPackageDownloader ?? new NuGetPackageDownloader(tempPackagesDir,
@@ -120,6 +125,14 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
                 _reporter.WriteLine();
                 _reporter.WriteLine(LocalizableStrings.WorkloadUpdateAdManifestsSucceeded);
             }
+            else if (_printRollbackDefinitionOnly)
+            {
+                var manifests = _workloadResolver.GetInstalledManifests().ToDictionary(m => m.Id, m => m.Version, StringComparer.OrdinalIgnoreCase);
+
+                _reporter.WriteLine("==workloadRollbackDefinitionJsonOutputStart==");
+                _reporter.WriteLine(JsonSerializer.Serialize(manifests));
+                _reporter.WriteLine("==workloadRollbackDefinitionJsonOutputEnd==");
+            }
             else
             {
                 try
@@ -144,8 +157,10 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
 
             var workloadIds = GetUpdatableWorkloads();
             _workloadManifestUpdater.UpdateAdvertisingManifestsAsync(includePreviews, offlineCache).Wait();
-            var manifestsToUpdate = _workloadManifestUpdater.CalculateManifestUpdates()
-                .Select(m => (m.manifestId, m.existingVersion, m.newVersion));
+            
+            var manifestsToUpdate = string.IsNullOrWhiteSpace(_fromRollbackDefinition) ?
+                _workloadManifestUpdater.CalculateManifestUpdates().Select(m => (m.manifestId, m.existingVersion, m.newVersion)) :
+                _workloadManifestUpdater.CalculateManifestRollbacks(_fromRollbackDefinition);
 
             UpdateWorkloadsWithInstallRecord(workloadIds, featureBand, manifestsToUpdate, offlineCache);
 
@@ -325,7 +340,7 @@ namespace Microsoft.DotNet.Workloads.Workload.Update
         {
             var currentFeatureBand = new SdkFeatureBand(_sdkVersion);
             var workloads = GetUpdatableWorkloads();
-            var updatedPacks = workloads.SelectMany(workloadId => _workloadResolver.GetPacksInWorkload(workloadId.ToString()))
+            var updatedPacks = workloads.SelectMany(workloadId => _workloadResolver.GetPacksInWorkload(workloadId))
                 .Distinct()
                 .Select(packId => _workloadResolver.TryGetPackInfo(packId))
                 .Where(pack => pack != null);

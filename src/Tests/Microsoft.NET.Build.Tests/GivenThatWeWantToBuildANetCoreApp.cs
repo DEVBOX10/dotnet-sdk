@@ -405,7 +405,7 @@ public static class Program
             File.Exists(runtimeconfigFile).Should().Be(shouldGenerateRuntimeConfigDevJson);
         }
 
-        [Theory]
+        [RequiresMSBuildVersionTheory("17.0.0.32901")]
         [InlineData("netcoreapp2.0")]
         [InlineData("netcoreapp3.0")]
         [InlineData("net5.0")]
@@ -891,17 +891,17 @@ class Program
                 .Should()
                 .Pass();
 
-            var outputPath = buildCommand.GetOutputDirectory(targetFramework: "net5.0").FullName;
+            var intermediatePath = buildCommand.GetIntermediateDirectory(targetFramework: "net5.0").FullName;
             if (produceOnlyReferenceAssembly == true)
             {
-                var refPath = Path.Combine(outputPath, "ref");
+                var refPath = Path.Combine(intermediatePath, "ref");
                 Directory.Exists(refPath)
                     .Should()
                     .BeFalse();
             }
             else
             {
-                var refPath = Path.Combine(outputPath, "ref", "MainProject.dll");
+                var refPath = Path.Combine(intermediatePath, "ref", "MainProject.dll");
                 File.Exists(refPath)
                     .Should()
                     .BeTrue();

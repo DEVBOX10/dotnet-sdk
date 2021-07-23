@@ -52,8 +52,8 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
             ExtractManifestPackagesToTempDirCallCount++;
             if (!string.IsNullOrEmpty(_tempDirManifestPath))
             {
-                Directory.CreateDirectory(Path.Combine(tempDir.Value, "mockPath"));
-                File.Copy(_tempDirManifestPath, Path.Combine(tempDir.Value, "mockPath", "WorkloadManifest.json"));
+                Directory.CreateDirectory(Path.Combine(tempDir.Value, "SampleManifest"));
+                File.Copy(_tempDirManifestPath, Path.Combine(tempDir.Value, "SampleManifest", "WorkloadManifest.json"));
             }
             return Task.CompletedTask;
         }
@@ -64,5 +64,6 @@ namespace Microsoft.DotNet.Cli.Workload.Install.Tests
         }
 
         public Task BackgroundUpdateAdvertisingManifestsWhenRequiredAsync() => throw new System.NotImplementedException();
+        public IEnumerable<(ManifestId manifestId, ManifestVersion existingVersion, ManifestVersion newVersion)> CalculateManifestRollbacks(string rollbackDefinitionFilePath) => throw new System.NotImplementedException();
     }
 }

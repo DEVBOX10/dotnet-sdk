@@ -94,8 +94,12 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
                 // Don't show entire stack trace
                 throw new GracefulException(string.Format(LocalizableStrings.WorkloadRepairFailed, e.Message), e);
             }
+            finally
+            {
+                _workloadInstaller.Shutdown();
+            }
 
-            return 0;
+            return _workloadInstaller.ExitCode;
         }
 
         private void ReinstallWorkloadsBasedOnCurrentManifests(IEnumerable<WorkloadId> workloadIds, SdkFeatureBand sdkFeatureBand)
@@ -105,14 +109,14 @@ namespace Microsoft.DotNet.Workloads.Workload.Repair
                 var installer = _workloadInstaller.GetPackInstaller();
 
                 var packsToInstall = workloadIds
-                    .SelectMany(workloadId => _workloadResolver.GetPacksInWorkload(workloadId.ToString()))
+                    .SelectMany(workloadId => _workloadResolver.GetPacksInWorkload(workloadId))
                     .Distinct()
                     .Select(packId => _workloadResolver.TryGetPackInfo(packId))
                     .Where(pack => pack != null);
 
                 foreach (var packId in packsToInstall)
                 {
-                    installer.InstallWorkloadPack(packId, sdkFeatureBand);
+                    installer.RepairWorkloadPack(packId, sdkFeatureBand);
                 }
             }
             else
