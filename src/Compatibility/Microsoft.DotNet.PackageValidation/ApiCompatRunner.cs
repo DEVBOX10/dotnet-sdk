@@ -18,15 +18,15 @@ namespace Microsoft.DotNet.PackageValidation
     /// </summary>
     public class ApiCompatRunner
     {
-        private Dictionary<MetadataInformation, List<(MetadataInformation rightAssembly, string header)>> _dict = new();
+        internal Dictionary<MetadataInformation, List<(MetadataInformation rightAssembly, string header)>> _dict = new();
         private readonly ApiComparer _differ = new();
-        private readonly IPackageLogger _log;
+        private readonly ICompatibilityLogger _log;
 
         private bool _isBaselineSuppression = false;
         private string _leftPackagePath;
         private string _rightPackagePath;
 
-        public ApiCompatRunner(string noWarn, (string, string)[] ignoredDifferences, bool enableStrictMode, IPackageLogger log)
+        public ApiCompatRunner(string noWarn, (string, string)[] ignoredDifferences, bool enableStrictMode, ICompatibilityLogger log)
         {
             _differ.NoWarn = noWarn;
             _differ.IgnoredDifferences = ignoredDifferences;
@@ -95,9 +95,10 @@ namespace Microsoft.DotNet.PackageValidation
         /// <param name="header">The header for the api compat diagnostics.</param>
         public void QueueApiCompat(MetadataInformation leftMetadataInfo, MetadataInformation rightMetdataInfo, string header)
         {
-            if (_dict.ContainsKey(leftMetadataInfo))
+            if (_dict.TryGetValue(leftMetadataInfo, out var value))
             {
-                _dict[leftMetadataInfo].Add((rightMetdataInfo, header));
+                if (!value.Contains((rightMetdataInfo, header)))
+                    value.Add((rightMetdataInfo, header));
             }
             else
             {

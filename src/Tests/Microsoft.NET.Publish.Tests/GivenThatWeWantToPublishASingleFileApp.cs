@@ -10,6 +10,7 @@ using Microsoft.NET.TestFramework.Commands;
 using Microsoft.NET.TestFramework.ProjectConstruction;
 using System.Linq;
 using System.Xml.Linq;
+using NuGet.Frameworks;
 using Xunit;
 using Xunit.Abstractions;
 using System;
@@ -84,7 +85,7 @@ namespace Microsoft.NET.Publish.Tests
                    RuntimeInformation.RuntimeIdentifier.StartsWith("osx") ? "lib" + baseName + ".dylib" : "lib" + baseName + ".so";
         }
 
-        private DirectoryInfo GetPublishDirectory(PublishCommand publishCommand, string targetFramework = "net5.0")
+        private DirectoryInfo GetPublishDirectory(PublishCommand publishCommand, string targetFramework = ToolsetInfo.CurrentTargetFramework)
         {
             return publishCommand.GetOutputDirectory(targetFramework: targetFramework,
                                                      runtimeIdentifier: RuntimeInformation.RuntimeIdentifier);
@@ -96,7 +97,7 @@ namespace Microsoft.NET.Publish.Tests
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net5.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{true}");
@@ -143,6 +144,18 @@ namespace Microsoft.NET.Publish.Tests
                 .Fail()
                 .And
                 .HaveStdOutContaining(Strings.CannotHaveSingleFileWithoutAppHost);
+        }
+
+        [Fact]
+        public void It_errors_when_publishing_single_file_with_win7()
+        {
+            const string rid = "win7-x86";
+            GetPublishCommand()
+                .Execute($"/p:RuntimeIdentifier={rid}", PublishSingleFile)
+                .Should()
+                .Fail()
+                .And
+                .HaveStdOutContaining(string.Format(Strings.SingleFileWin7Incompatible, rid));
         }
 
         [Fact]
@@ -259,12 +272,12 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionFact("17.0.0.32901")]
-        public void No_runtime_files_6_0()
+        public void No_runtime_files()
         {
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
 
@@ -277,54 +290,59 @@ namespace Microsoft.NET.Publish.Tests
                 .Pass();
 
             string[] expectedFiles = { $"{testProject.Name}{Constants.ExeSuffix}", $"{testProject.Name}.pdb" };
-            GetPublishDirectory(publishCommand, "net6.0")
+            GetPublishDirectory(publishCommand, ToolsetInfo.CurrentTargetFramework)
                 .Should()
                 .OnlyHaveFiles(expectedFiles);
         }
 
 
-        [RequiresMSBuildVersionTheory("17.0.0.32901",
-            Skip = "Failing on unextracted singlefile. Possibly related to https://github.com/dotnet/runtime/issues/45277.")]
+        [RequiresMSBuildVersionTheory("17.0.0.32901")]
         [InlineData(true)]
         [InlineData(false)]
         public void It_supports_composite_r2r(bool extractAll)
         {
-            var projName = "SingleFileTest";
-            if (extractAll)
+            // the test fails once in a while on OSX, but dumps are not very informative,
+            // so enabling this for non-OSX platforms, hoping to get a better crash dump
+            // if you see this failing on Linux, please preserve the dump.
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                projName += "Extracted";
+                var projName = "SingleFileTest";
+                if (extractAll)
+                {
+                    projName += "Extracted";
+                }
+
+                var testProject = new TestProject()
+                {
+                    Name = projName,
+                    TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
+                    IsExe = true,
+                };
+
+                var testAsset = _testAssetsManager.CreateTestProject(testProject);
+                var publishCommand = new PublishCommand(testAsset);
+                var extraArgs = new List<string>() { PublishSingleFile, ReadyToRun, ReadyToRunComposite, RuntimeIdentifier };
+
+                if (extractAll)
+                {
+                    extraArgs.Add(IncludeAllContent);
+                }
+
+                publishCommand
+                    .Execute(extraArgs.ToArray())
+                    .Should()
+                    .Pass();
+
+                var publishDir = GetPublishDirectory(publishCommand, targetFramework: ToolsetInfo.CurrentTargetFramework).FullName;
+                var singleFilePath = Path.Combine(publishDir, $"{testProject.Name}{Constants.ExeSuffix}");
+
+                var command = new RunExeCommand(Log, singleFilePath);
+                command.Execute()
+                    .Should()
+                    .Pass()
+                    .And
+                    .HaveStdOutContaining("Hello World");
             }
-
-            var testProject = new TestProject()
-            {
-                Name = projName,
-                TargetFrameworks = "net6.0",
-                IsExe = true,
-            };
-
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var publishCommand = new PublishCommand(testAsset);
-            var extraArgs = new List<string>() { PublishSingleFile, ReadyToRun, ReadyToRunComposite, RuntimeIdentifier };
-
-            if (extractAll)
-            {
-                extraArgs.Add(IncludeAllContent);
-            }
-
-            publishCommand
-                .Execute(extraArgs.ToArray())
-                .Should()
-                .Pass();
-
-            var publishDir = GetPublishDirectory(publishCommand, targetFramework: "net6.0").FullName;
-            var singleFilePath = Path.Combine(publishDir, $"{testProject.Name}{Constants.ExeSuffix}");
-
-            var command = new RunExeCommand(Log, singleFilePath);
-            command.Execute()
-                .Should()
-                .Pass()
-                .And
-                .HaveStdOutContaining("Hello World");
         }
 
         [RequiresMSBuildVersionFact("16.8.0")]
@@ -428,9 +446,12 @@ namespace Microsoft.NET.Publish.Tests
                 .Should()
                 .Pass();
 
-            var intermediateDirectory = publishCommand.GetIntermediateDirectory(targetFramework: "net5.0", runtimeIdentifier: RuntimeInformation.RuntimeIdentifier);
+            string targetFramework = ToolsetInfo.CurrentTargetFramework;
+            NuGetFramework framework = NuGetFramework.Parse(targetFramework);
+
+            var intermediateDirectory = publishCommand.GetIntermediateDirectory(targetFramework, runtimeIdentifier: RuntimeInformation.RuntimeIdentifier);
             var mainProjectDll = Path.Combine(intermediateDirectory.FullName, $"{TestProjectName}.dll");
-            var niPdbFile = GivenThatWeWantToPublishReadyToRun.GetPDBFileName(mainProjectDll);
+            var niPdbFile = GivenThatWeWantToPublishReadyToRun.GetPDBFileName(mainProjectDll, framework);
 
             string[] expectedFiles = { SingleFile, PdbFile, niPdbFile };
             GetPublishDirectory(publishCommand)
@@ -574,7 +595,7 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
-        [InlineData("net6.0")]
+        [InlineData(ToolsetInfo.CurrentTargetFramework)]
         public void ILLink_analyzer_warnings_are_produced(string targetFramework)
         {
             var projectName = "ILLinkAnalyzerWarningsApp";
@@ -591,7 +612,7 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
-        [InlineData("net6.0")]
+        [InlineData(ToolsetInfo.CurrentTargetFramework)]
         public void ILLink_linker_analyzer_warnings_are_not_produced(string targetFramework)
         {
             var projectName = "ILLinkAnalyzerWarningsApp";
@@ -610,7 +631,7 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
-        [InlineData("net6.0")]
+        [InlineData(ToolsetInfo.CurrentTargetFramework)]
         public void ILLink_analyzer_warnings_are_produced_using_EnableSingleFileAnalyzer(string targetFramework)
         {
             var projectName = "ILLinkAnalyzerWarningsApp";
@@ -672,6 +693,12 @@ class C
         [InlineData("net5.0", true, IncludeDefault)]
         [InlineData("net5.0", true, IncludeNative)]
         [InlineData("net5.0", true, IncludeAllContent)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, false, IncludeDefault)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, false, IncludeNative)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, false, IncludeAllContent)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, true, IncludeDefault)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, true, IncludeNative)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, true, IncludeAllContent)]
         public void It_runs_single_file_apps(string targetFramework, bool selfContained, string bundleOption)
         {
             var testProject = new TestProject()
@@ -710,7 +737,7 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net5.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", $"{selfContained}");
@@ -753,7 +780,7 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
 
@@ -776,13 +803,13 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
             var publishCommand = new PublishCommand(testAsset);
-            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, "net6.0").FullName, $"SingleFileTest{Constants.ExeSuffix}");
+            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, ToolsetInfo.CurrentTargetFramework).FullName, $"SingleFileTest{Constants.ExeSuffix}");
 
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative, "/p:EnableCompressionInSingleFile=false")
@@ -807,13 +834,13 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
             var publishCommand = new PublishCommand(testAsset);
-            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, "net6.0").FullName, $"SingleFileTest{Constants.ExeSuffix}");
+            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, ToolsetInfo.CurrentTargetFramework).FullName, $"SingleFileTest{Constants.ExeSuffix}");
 
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier, IncludeNative, "/p:EnableCompressionInSingleFile=false")
@@ -838,7 +865,7 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", "true");
@@ -847,7 +874,7 @@ class C
                 .WithProjectChanges(project => VerifyPrepareForBundle(project));
 
             var publishCommand = new PublishCommand(testAsset);
-            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, "net6.0").FullName, $"SingleFileTest{Constants.ExeSuffix}");
+            var singleFilePath = Path.Combine(GetPublishDirectory(publishCommand, ToolsetInfo.CurrentTargetFramework).FullName, $"SingleFileTest{Constants.ExeSuffix}");
 
             publishCommand
                 .Execute(PublishSingleFile, RuntimeIdentifier)
@@ -896,7 +923,7 @@ class C
             var testProject = new TestProject()
             {
                 Name = "SingleFileTest",
-                TargetFrameworks = "net6.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("SelfContained", "true");

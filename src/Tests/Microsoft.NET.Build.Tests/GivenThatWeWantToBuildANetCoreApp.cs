@@ -251,7 +251,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource();
 
             var getValuesCommand = new GetValuesCommand(Log, testAsset.TestRoot,
-                "netcoreapp2.1", "TargetDefinitions", GetValuesCommand.ValueType.Item)
+                ToolsetInfo.CurrentTargetFramework, "TargetDefinitions", GetValuesCommand.ValueType.Item)
             {
                 DependsOnTargets = "RunResolvePackageDependencies",
                 Properties = { { "EmitLegacyAssetsFileItems", "true" } }
@@ -266,7 +266,7 @@ namespace Microsoft.NET.Build.Tests
             // should only contain one target with no RIDs
             var targetDefs = getValuesCommand.GetValues();
             targetDefs.Count.Should().Be(1);
-            targetDefs.Should().Contain(".NETCoreApp,Version=v2.1");
+            targetDefs.Should().Contain(ToolsetInfo.CurrentTargetFramework);
         }
 
         [Theory]
@@ -891,17 +891,17 @@ class Program
                 .Should()
                 .Pass();
 
-            var intermediatePath = buildCommand.GetIntermediateDirectory(targetFramework: "net5.0").FullName;
+            var outputPath = buildCommand.GetOutputDirectory(targetFramework: "net5.0").FullName;
             if (produceOnlyReferenceAssembly == true)
             {
-                var refPath = Path.Combine(intermediatePath, "ref");
+                var refPath = Path.Combine(outputPath, "ref");
                 Directory.Exists(refPath)
                     .Should()
                     .BeFalse();
             }
             else
             {
-                var refPath = Path.Combine(intermediatePath, "ref", "MainProject.dll");
+                var refPath = Path.Combine(outputPath, "ref", "MainProject.dll");
                 File.Exists(refPath)
                     .Should()
                     .BeTrue();
