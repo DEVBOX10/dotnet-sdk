@@ -22,10 +22,10 @@ Copyright (c) .NET Foundation. All rights reserved.
   <PropertyGroup>
     <!-- Paths to tools, tasks, and extensions are calculated relative to the BlazorWebAssemblySdkDirectoryRoot. This can be modified to test a local build. -->
     <BlazorWebAssemblySdkDirectoryRoot Condition="'$(BlazorWebAssemblySdkDirectoryRoot)'==''">$(MSBuildThisFileDirectory)..\</BlazorWebAssemblySdkDirectoryRoot>
-    <_BlazorWebAssemblySdkTasksTFM Condition=" '$(MSBuildRuntimeType)' == 'Core'">net6.0</_BlazorWebAssemblySdkTasksTFM>
+    <_BlazorWebAssemblySdkTasksTFM Condition=" '$(MSBuildRuntimeType)' == 'Core'">net7.0</_BlazorWebAssemblySdkTasksTFM>
     <_BlazorWebAssemblySdkTasksTFM Condition=" '$(MSBuildRuntimeType)' != 'Core'">net472</_BlazorWebAssemblySdkTasksTFM>
     <_BlazorWebAssemblySdkTasksAssembly>$(BlazorWebAssemblySdkDirectoryRoot)tools\$(_BlazorWebAssemblySdkTasksTFM)\Microsoft.NET.Sdk.BlazorWebAssembly.Tasks.dll</_BlazorWebAssemblySdkTasksAssembly>
-    <_BlazorWebAssemblySdkToolAssembly>$(BlazorWebAssemblySdkDirectoryRoot)tools\net6.0\Microsoft.NET.Sdk.BlazorWebAssembly.Tool.dll</_BlazorWebAssemblySdkToolAssembly>
+    <_BlazorWebAssemblySdkToolAssembly>$(BlazorWebAssemblySdkDirectoryRoot)tools\net7.0\Microsoft.NET.Sdk.BlazorWebAssembly.Tool.dll</_BlazorWebAssemblySdkToolAssembly>
   </PropertyGroup>
 
   <UsingTask TaskName="Microsoft.NET.Sdk.BlazorWebAssembly.GenerateBlazorWebAssemblyBootJson" AssemblyFile="$(_BlazorWebAssemblySdkTasksAssembly)" />
@@ -72,7 +72,9 @@ Copyright (c) .NET Foundation. All rights reserved.
     <DisableAutoWasmBuildApp>true</DisableAutoWasmBuildApp>
     <DisableAutoWasmPublishApp>true</DisableAutoWasmPublishApp>
     <EnableDefaultWasmAssembliesToBundle>false</EnableDefaultWasmAssembliesToBundle>
-    <WasmNestedPublishAppDependsOn>ComputeFilesToPublish;_GatherWasmFilesToPublish;$(WasmNestedPublishAppDependsOn)</WasmNestedPublishAppDependsOn>
+    <WasmNestedPublishAppDependsOn>_GatherWasmFilesToPublish;$(WasmNestedPublishAppDependsOn)</WasmNestedPublishAppDependsOn>
+    <BlazorEnableCompression Condition="'$(WasmBuildingForNestedPublish)' == 'true'">false</BlazorEnableCompression>
+    <_WasmNestedPublishAppPreTarget>ComputeFilesToPublish</_WasmNestedPublishAppPreTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -93,14 +95,14 @@ Copyright (c) .NET Foundation. All rights reserved.
       $(StaticWebAssetsPrepareForRunDependsOn)
     </StaticWebAssetsPrepareForRunDependsOn>
 
-    <ResolvePublishStaticWebAssetsDependsOn>
+    <ResolvePublishStaticWebAssetsDependsOn Condition="'$(WasmBuildingForNestedPublish)' != 'true'">
       $(ResolvePublishStaticWebAssetsDependsOn);
       ProcessPublishFilesForBlazor;
       ComputeBlazorExtensions;
       _AddPublishBlazorBootJsonToStaticWebAssets;
     </ResolvePublishStaticWebAssetsDependsOn>
 
-    <GenerateStaticWebAssetsPublishManifestDependsOn>
+    <GenerateStaticWebAssetsPublishManifestDependsOn Condition="'$(WasmBuildingForNestedPublish)' != 'true'">
       $(GenerateStaticWebAssetsPublishManifestDependsOn);
       GeneratePublishBlazorBootJson;
     </GenerateStaticWebAssetsPublishManifestDependsOn>
@@ -166,7 +168,6 @@ Copyright (c) .NET Foundation. All rights reserved.
       TimeZoneSupport="$(_BlazorEnableTimeZoneSupport)"
       InvariantGlobalization="$(_BlazorInvariantGlobalization)"
       CopySymbols="$(_BlazorCopyOutputSymbolsToOutputDirectory)"
-      BundledNETCoreAppPackageVersion="$(BundledNETCoreAppPackageVersion)"
       OutputPath="$(OutputPath)"
     >
       <Output TaskParameter="AssetCandidates" ItemName="_BuildAssetsCandidates" />
@@ -284,7 +285,6 @@ Copyright (c) .NET Foundation. All rights reserved.
       <StaticWebAsset Include="@(_BlazorGzipStaticWebAsset)" />
       <StaticWebAsset Include="@(_BuildBlazorBootJsonStaticWebAsset)" />
     </ItemGroup>
-
   </Target>
 
   <Target Name="_GenerateBuildBlazorBootJson" DependsOnTargets="ResolveStaticWebAssetsInputs">
@@ -401,6 +401,14 @@ Copyright (c) .NET Foundation. All rights reserved.
         Condition="'%(StaticWebAsset.AssetTraitName)' == 'BlazorWebAssemblyResource' or '%(StaticWebAsset.AssetTraitName)' == 'Culture' or '%(AssetRole)' == 'Alternative'" />
     </ItemGroup>
 
+    <ItemGroup>
+      <_DotNetJsItem Include="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.DestinationSubPath)' == 'dotnet.js' AND '%(ResolvedFileToPublish.AssetType)' == 'native'" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <_DotNetJsVersion>%(_DotNetJsItem.NuGetPackageVersion)</_DotNetJsVersion>
+    </PropertyGroup>
+
     <ComputeBlazorPublishAssets
       ResolvedFilesToPublish="@(ResolvedFileToPublish)"
       TimeZoneSupport="$(_BlazorEnableTimeZoneSupport)"
@@ -409,7 +417,7 @@ Copyright (c) .NET Foundation. All rights reserved.
       InvariantGlobalization="$(_BlazorInvariantGlobalization)"
       CopySymbols="$(CopyOutputSymbolsToPublishDirectory)"
       ExistingAssets="@(_BlazorPublishPrefilteredAssets)"
-      BundledNETCoreAppPackageVersion="$(BundledNETCoreAppPackageVersion)"
+      DotNetJsVersion="$(_DotNetJsVersion)"
     >
       <Output TaskParameter="NewCandidates" ItemName="_NewBlazorPublishStaticWebAssets" />
       <Output TaskParameter="FilesToRemove" ItemName="_PublishResolvedFilesToRemove" />
