@@ -83,6 +83,9 @@ Examples:
             _cts = new CancellationTokenSource();
             console.CancelKeyPress += OnCancelKeyPress;
             _reporter = CreateReporter(verbose: true, quiet: false, console: _console);
+
+            // Register listeners that load Roslyn-related assemblies from the `Rosyln/bincore` directory.
+            RegisterAssemblyResolutionEvents(sdkRootDirectory);
         }
 
         public static async Task<int> Main(string[] args)
@@ -126,16 +129,18 @@ Examples:
                 return null;
             });
 
+            var projectOption = new Option<string>("-p", "The project to watch") { IsHidden = true };
             var root = new RootCommand(Description)
             {
                  quiet,
                  verbose,
+                 new Option<bool>(
+                    new[] { "--no-hot-reload" },
+                    "Suppress hot reload for supported apps."),
                  new Option<string>(
                      "--project",
                     "The project to watch"),
-                 new Option<string>(
-                     "-p",
-                     "The project to watch") { IsHidden = true },
+                 projectOption,
                  new Option<bool>(
                     "--list",
                     "Lists all discovered files without starting the watcher"),
@@ -147,7 +152,7 @@ Examples:
                 if (string.IsNullOrEmpty(options.Project))
                 {
 #pragma warning disable CS0618 // Type or member is obsolete
-                    var projectOptionShort = parseResults.ValueForOption<string>("-p");
+                    var projectOptionShort = parseResults.GetValueForOption(projectOption);
 #pragma warning restore CS0618 // Type or member is obsolete
                     if (!string.IsNullOrEmpty(projectOptionShort))
                     {
@@ -239,8 +244,14 @@ Examples:
 
             var args = options.RemainingArguments;
 
-            if (args.Length == 0)
+            var isDefaultRunCommand = false;
+            if (args.Length == 1 && args[0] == "run")
             {
+                isDefaultRunCommand = true;
+            }
+            else if (args.Length == 0)
+            {
+                isDefaultRunCommand = true;
                 args = new[] { "run" };
             }
 
@@ -279,10 +290,26 @@ Examples:
 
             context.ProjectGraph = TryReadProject(projectFile);
 
-            // We'll use the presence of a profile to decide if we're going to use the hot-reload based watching.
-            // The watcher will complain if users configure this for runtimes that would not support it.
-            await using var watcher = new DotNetWatcher(reporter, fileSetFactory, watchOptions);
-            await watcher.WatchAsync(context, cancellationToken);
+            if (!options.NoHotReload && isDefaultRunCommand && context.ProjectGraph is not null && IsHotReloadSupported(context.ProjectGraph))
+            {
+                _reporter.Verbose($"Project supports hot reload and was configured to run with the default run-command. Watching with hot-reload");
+
+                // Use hot-reload based watching if
+                // a) watch was invoked with no args or with exactly one arg - the run command e.g. `dotnet watch` or `dotnet watch run`
+                // b) The launch profile supports hot-reload based watching.
+                // The watcher will complain if users configure this for runtimes that would not support it.
+                await using var watcher = new HotReloadDotNetWatcher(reporter, fileSetFactory, watchOptions, _console);
+                await watcher.WatchAsync(context, cancellationToken);
+            }
+            else
+            {
+                _reporter.Verbose("Did not find a HotReloadProfile or running a non-default command. Watching with legacy behavior.");
+
+                // We'll use the presence of a profile to decide if we're going to use the hot-reload based watching.
+                // The watcher will complain if users configure this for runtimes that would not support it.
+                await using var watcher = new DotNetWatcher(reporter, fileSetFactory, watchOptions);
+                await watcher.WatchAsync(context, cancellationToken);
+            }
 
             return 0;
         }
@@ -301,6 +328,26 @@ Examples:
 
             return null;
         }
+
+        private static bool IsHotReloadSupported(ProjectGraph projectGraph)
+        {
+            var projectInstance = projectGraph.EntryPointNodes.FirstOrDefault()?.ProjectInstance;
+            if (projectInstance is null)
+            {
+                return false;
+            }
+
+            var projectCapabilities = projectInstance.GetItems("ProjectCapability");
+            foreach (var item in projectCapabilities)
+            {
+                if (item.EvaluatedInclude == "SupportsHotReload")
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private async Task<int> ListFilesAsync(
             IReporter reporter,
             string project,
@@ -352,6 +399,26 @@ Examples:
         {
             _console.CancelKeyPress -= OnCancelKeyPress;
             _cts.Dispose();
+        }
+
+        private static void RegisterAssemblyResolutionEvents(string sdkRootDirectory)
+        {
+            var roslynPath = Path.Combine(sdkRootDirectory, "Roslyn", "bincore");
+
+            AssemblyLoadContext.Default.Resolving += (context, assembly) =>
+            {
+                if (assembly.Name is "Microsoft.CodeAnalysis" or "Microsoft.CodeAnalysis.CSharp")
+                {
+                    var loadedAssembly = context.LoadFromAssemblyPath(Path.Combine(roslynPath, assembly.Name + ".dll"));
+                    // Avoid scenarioes where the assembly in rosylnPath is older than what we expect
+                    if (loadedAssembly.GetName().Version < assembly.Version)
+                    {
+                        throw new Exception($"Found a version of {assembly.Name} that was lower than the target version of {assembly.Version}");
+                    }
+                    return loadedAssembly;
+                }
+                return null;
+            };
         }
     }
 }

@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.CommandLine.IO;
+using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -228,6 +230,23 @@ namespace Microsoft.DotNet.Cli.Build.Tests
                .NotHaveStdOutContaining("NETSDK1179");
         }
 
+        [Fact]
+        public void It_builds_with_implicit_rid_with_self_contained_option()
+        {
+            var testInstance = _testAssetsManager.CopyTestAsset("HelloWorld")
+                .WithSource()
+                .WithTargetFrameworkOrFrameworks("net6.0", false)
+                .Restore(Log);
+
+            new DotnetBuildCommand(Log)
+               .WithWorkingDirectory(testInstance.Path)
+               .Execute("--self-contained")
+               .Should()
+               .Pass()
+               .And
+               .NotHaveStdOutContaining("NETSDK1031");
+        }
+
         [Theory]
         [InlineData("roslyn3.9")]
         [InlineData("roslyn4.0")]
@@ -306,6 +325,19 @@ namespace Microsoft.DotNet.Cli.Build.Tests
                 }
             }
             throw new InvalidDataException("Expected path to be under a NuGet root: " + absoluteNuGetPath);
+        }
+
+        [Theory]
+        [InlineData("build")]
+        [InlineData("run")]
+        public void It_uses_correct_runtime_help_description(string command)
+        {
+            var console = new TestConsole();
+            var parseResult = Parser.Instance.Parse(new string[] { command, "-h" });
+            parseResult.Invoke(console);
+            console.Out.ToString().Should().Contain(command.Equals("build") ?
+                Tools.Build.LocalizableStrings.RuntimeOptionDescription :
+                Tools.Run.LocalizableStrings.RuntimeOptionDescription);
         }
     }
 }
