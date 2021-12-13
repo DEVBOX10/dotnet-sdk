@@ -115,6 +115,7 @@ namespace Microsoft.DotNet.Cli
             .UseParseDirective()
             .UseSuggestDirective()
             .DisablePosixBinding()
+            .EnableLegacyDoubleDashBehavior()
             .Build();
 
         private static void ExceptionHandler(Exception exception, InvocationContext context)
@@ -194,12 +195,13 @@ namespace Microsoft.DotNet.Cli
                         }
                         return null;
                     };
-                    builder.Customize(option, description: descriptionCallback);
+                    builder.Customize(option, secondColumnText: descriptionCallback);
                 }
             }
 
-            public override void Write(ICommand command, TextWriter writer, ParseResult parseResult)
+            public override void Write(HelpContext context)
             {
+                var command = context.Command;
                 var helpArgs = new string[] { "--help" };
                 if (command.Equals(RootCommand))
                 {
@@ -234,7 +236,7 @@ namespace Microsoft.DotNet.Cli
                         AddPackageParser.CmdPackageArgument.Suggestions.Clear();
                     }
 
-                    base.Write(command, writer, parseResult);
+                    base.Write(context);
                 }
             }
         }
