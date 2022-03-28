@@ -48,7 +48,7 @@ namespace Microsoft.DotNet.Workloads.Workload.Install
 
             userProfileDir ??= CliFolderPathCalculator.DotnetUserProfileFolderPath;
 
-            return new NetSdkManagedInstaller(reporter,
+            return new FileBasedInstaller(reporter,
                 sdkFeatureBand,
                 workloadResolver,
                 userProfileDir,
@@ -68,7 +68,7 @@ namespace Microsoft.DotNet.Workloads.Workload.Install
         public static InstallType GetWorkloadInstallType(SdkFeatureBand sdkFeatureBand, string dotnetDir)
         {
             string installerTypePath = Path.Combine(dotnetDir, "metadata",
-                "workloads", $"{sdkFeatureBand}", "installertype");
+                "workloads", $"{sdkFeatureBand.ToStringWithoutPrerelease()}", "installertype");
 
             if (File.Exists(Path.Combine(installerTypePath, "msi")))
             {

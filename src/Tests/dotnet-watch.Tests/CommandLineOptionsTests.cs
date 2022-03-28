@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.CommandLine;
@@ -38,8 +38,8 @@ namespace Microsoft.DotNet.Watcher.Tools
 
         [Theory]
         [InlineData(new[] { "run" }, new[] { "run" })]
-        [InlineData(new[] { "run", "--", "subarg" }, new[] { "run", "--", "subarg" })]
-        [InlineData(new[] { "--", "run", "--", "subarg" }, new[] { "--", "run", "--", "subarg" })]
+        [InlineData(new[] { "run", "--", "subarg" }, new[] { "run", "subarg" })]
+        [InlineData(new[] { "--", "run", "--", "subarg" }, new[] { "run", "--", "subarg" })]
         [InlineData(new[] { "--unrecognized-arg" }, new[] { "--unrecognized-arg" })]
         public async Task ParsesRemainingArgs(string[] args, string[] expected)
         {
