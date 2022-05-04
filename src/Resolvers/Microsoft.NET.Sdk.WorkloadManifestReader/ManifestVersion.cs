@@ -3,10 +3,11 @@
 
 using System;
 using Microsoft.DotNet.MSBuildSdkResolver;
+using Strings = Microsoft.NET.Sdk.Localization.Strings;
 
-namespace Microsoft.DotNet.Workloads.Workload.Install
+namespace Microsoft.NET.Sdk.WorkloadManifestReader
 {
-    internal class ManifestVersion : IEquatable<ManifestVersion>, IComparable<ManifestVersion>
+    public class ManifestVersion : IEquatable<ManifestVersion>, IComparable<ManifestVersion>
     {
         private FXVersion _version;
 
@@ -14,21 +15,21 @@ namespace Microsoft.DotNet.Workloads.Workload.Install
         {
             if (!FXVersion.TryParse(version, out _version))
             {
-                throw new ArgumentNullException(nameof(version));
+                throw new ArgumentException(Strings.InvalidManifestVersion, version);     
             }
         }
 
-        public bool Equals(ManifestVersion other)
+        public bool Equals(ManifestVersion? other)
         {
-            return ToString().Equals(other.ToString());
+            return ToString().Equals(other?.ToString());
         }
 
-        public int CompareTo(ManifestVersion other)
+        public int CompareTo(ManifestVersion? other)
         {
-            return FXVersion.Compare(_version, other._version);
+            return FXVersion.Compare(_version, other?._version);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is ManifestVersion version && Equals(version);
         }
