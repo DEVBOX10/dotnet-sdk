@@ -19,7 +19,12 @@ namespace Microsoft.DotNet.Cli
         public static ForwardedOption<T> ForwardAsSingle<T>(this ForwardedOption<T> option, Func<T, string> format) => option.SetForwardingFunction(format);
 
         public static ForwardedOption<string[]> ForwardAsProperty(this ForwardedOption<string[]> option) => option
-            .SetForwardingFunction((optionVals) => optionVals.SelectMany(optionVal => new string[] { $"{option.Aliases.FirstOrDefault()}:{optionVal.Replace("roperty:", string.Empty)}" }));
+            .SetForwardingFunction((optionVals) =>
+                optionVals
+                    .SelectMany(Microsoft.DotNet.Cli.Utils.MSBuildPropertyParser.ParseProperties)
+                    // must escape semicolon-delimited property values when forwarding them to MSBuild
+                    .Select(keyValue => $"{option.Aliases.FirstOrDefault()}:{keyValue.key}={keyValue.value.Replace(";", "%3B")}")
+                );
 
         public static Option<T> ForwardAsMany<T>(this ForwardedOption<T> option, Func<T, IEnumerable<string>> format) => option.SetForwardingFunction(format);
 

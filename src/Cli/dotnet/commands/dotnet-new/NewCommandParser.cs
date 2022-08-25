@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -15,6 +17,20 @@ using Microsoft.TemplateEngine.Abstractions;
 using Microsoft.TemplateEngine.Abstractions.TemplatePackage;
 using Microsoft.TemplateEngine.Edge;
 using System.Linq;
+using Microsoft.DotNet.Workloads.Workload.List;
+using Microsoft.TemplateEngine.Abstractions.Components;
+using Microsoft.DotNet.Tools.Add.PackageReference;
+using Microsoft.DotNet.Tools.Add.ProjectToProjectReference;
+using Microsoft.DotNet.Tools.Sln.Add;
+using Microsoft.DotNet.Tools;
+using Microsoft.DotNet.Tools.Common;
+using LocalizableStrings = Microsoft.DotNet.Tools.New.LocalizableStrings;
+using Microsoft.TemplateEngine.MSBuildEvaluation;
+using Microsoft.TemplateEngine.Abstractions.Constraints;
+using System.IO;
+using NuGet.Packaging;
+using Microsoft.TemplateEngine.Cli.PostActionProcessors;
+using Microsoft.DotNet.Tools.New.PostActionProcessors;
 
 namespace Microsoft.DotNet.Cli
 {
@@ -22,9 +38,14 @@ namespace Microsoft.DotNet.Cli
     {
         public static readonly string DocsLink = "https://aka.ms/dotnet-new";
         public const string CommandName = "new";
-        private const string HostIdentifier = "dotnetcli";
+        private const string EnableProjectContextEvaluationEnvVar = "DOTNET_CLI_DISABLE_PROJECT_EVAL";
 
-        private static readonly Option<bool> _disableSdkTemplates = new Option<bool>("--debug:disable-sdk-templates", () => false, "If present, prevents templates bundled in the SDK from being presented").Hide();
+        private const string HostIdentifier = "dotnetcli";
+        private static readonly Option<bool> _disableSdkTemplates = new Option<bool>("--debug:disable-sdk-templates", () => false, LocalizableStrings.DisableSdkTemplates_OptionDescription).Hide();
+
+        private static readonly Option<bool> _disableProjectContextEvaluation = new Option<bool>("--debug:disable-project-context", () => false, LocalizableStrings.DisableProjectContextEval_OptionDescription).Hide();
+
+        internal static Option<FileInfo> ProjectPathOption { get; } = new Option<FileInfo>("--project", LocalizableStrings.ProjectPath_OptionDescription).ExistingOnly().Hide();
 
         internal static readonly System.CommandLine.Command Command = GetCommand();
 
@@ -55,37 +76,55 @@ namespace Microsoft.DotNet.Cli
                 return logger;
             };
 
-            var callbacks = new Microsoft.TemplateEngine.Cli.NewCommandCallbacks()
-            {
-                RestoreProject = RestoreProject
-            };
-
             var getEngineHost = (ParseResult parseResult) => {
-                var disableSdkTemplates = parseResult.GetValueForOption(_disableSdkTemplates);
-                return CreateHost(disableSdkTemplates);
+                bool disableSdkTemplates = parseResult.GetValueForOption(_disableSdkTemplates);
+                bool disableProjectContext = parseResult.GetValueForOption(_disableProjectContextEvaluation)
+                    || Env.GetEnvironmentVariableAsBool(EnableProjectContextEvaluationEnvVar);
+                FileInfo? projectPath = parseResult.GetValueForOption(ProjectPathOption);
+
+                //TODO: read and pass output directory
+                return CreateHost(disableSdkTemplates, disableProjectContext, projectPath);
             };
 
-            var command = Microsoft.TemplateEngine.Cli.NewCommandFactory.Create(CommandName, getEngineHost, getLogger, callbacks);
+            var command = Microsoft.TemplateEngine.Cli.NewCommandFactory.Create(CommandName, getEngineHost, getLogger);
 
             // adding this option lets us look for its bound value during binding in a typed way
             command.AddGlobalOption(_disableSdkTemplates);
+            command.AddGlobalOption(_disableProjectContextEvaluation);
+            command.AddGlobalOption(ProjectPathOption);
             return command;
         }
 
-        private static ITemplateEngineHost CreateHost(bool disableSdkTemplates)
+        private static ITemplateEngineHost CreateHost(bool disableSdkTemplates, bool disableProjectContext, FileInfo? projectPath)
         {
             var builtIns = new List<(Type InterfaceType, IIdentifiedComponent Instance)>();
             builtIns.AddRange(Microsoft.TemplateEngine.Orchestrator.RunnableProjects.Components.AllComponents);
             builtIns.AddRange(Microsoft.TemplateEngine.Edge.Components.AllComponents);
             builtIns.AddRange(Microsoft.TemplateEngine.Cli.Components.AllComponents);
             builtIns.AddRange(Microsoft.TemplateSearch.Common.Components.AllComponents);
+
+            //post actions
+            builtIns.AddRange(new (Type, IIdentifiedComponent)[]
+            {
+                (typeof(IPostActionProcessor), new DotnetAddPostActionProcessor()),
+                (typeof(IPostActionProcessor), new DotnetSlnPostActionProcessor()),
+                (typeof(IPostActionProcessor), new DotnetRestorePostActionProcessor()),
+            });
             if (!disableSdkTemplates)
             {
                 builtIns.Add((typeof(ITemplatePackageProviderFactory), new BuiltInTemplatePackageProviderFactory()));
                 builtIns.Add((typeof(ITemplatePackageProviderFactory), new OptionalWorkloadProviderFactory()));
             }
+            if (!disableProjectContext)
+            {
+                builtIns.Add((typeof(IBindSymbolSource), new ProjectContextSymbolSource()));
+                builtIns.Add((typeof(ITemplateConstraintFactory), new ProjectCapabilityConstraintFactory()));
+                builtIns.Add((typeof(MSBuildEvaluator), new MSBuildEvaluator(outputDirectory: null, projectPath: projectPath?.FullName)));
+            }
+            builtIns.Add((typeof(IWorkloadsInfoProvider), new WorkloadsInfoProvider(new WorkloadInfoHelper())));
+            builtIns.Add((typeof(ISdkInfoProvider), new SdkInfoProvider()));
 
-            string preferredLangEnvVar = Environment.GetEnvironmentVariable("DOTNET_NEW_PREFERRED_LANG");
+            string? preferredLangEnvVar = Environment.GetEnvironmentVariable("DOTNET_NEW_PREFERRED_LANG");
             string preferredLang = string.IsNullOrWhiteSpace(preferredLangEnvVar)? "C#" : preferredLangEnvVar;
 
             var preferences = new Dictionary<string, string>
@@ -99,9 +138,6 @@ namespace Microsoft.DotNet.Cli
             return new DefaultTemplateEngineHost(HostIdentifier, "v" + Product.Version, preferences, builtIns);
         }
 
-        private static bool RestoreProject(string pathToRestore)
-        {
-            return RestoreCommand.Run(new string[] { pathToRestore }) == 0;
-        }
+
     }
 }

@@ -25,7 +25,7 @@ namespace Microsoft.NET.Build.Tests
         [InlineData("UseWPF")]
         public void It_errors_when_missing_windows_target_platform(string propertyName)
         {
-            var targetFramework = "net5.0";
+            var targetFramework = ToolsetInfo.CurrentTargetFramework;
             TestProject testProject = new TestProject()
             {
                 Name = "MissingTargetPlatform",
@@ -60,14 +60,14 @@ namespace Microsoft.NET.Build.Tests
             TestProject testProjectB = new TestProject()
             {
                 Name = "B",
-                TargetFrameworks = "net5.0"
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework
             };
             testProjectB.ReferencedProjects.Add(testProjectA);
 
             TestProject testProjectC = new TestProject()
             {
                 Name = "C",
-                TargetFrameworks = "net5.0"
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework
             };
             testProjectC.ReferencedProjects.Add(testProjectB);
 
@@ -84,7 +84,7 @@ namespace Microsoft.NET.Build.Tests
         [WindowsOnlyRequiresMSBuildVersionFact("16.8.0")]
         public void It_warns_when_specifying_windows_desktop_sdk()
         {
-            var targetFramework = "net5.0-windows";
+            var targetFramework = $"{ToolsetInfo.CurrentTargetFramework}-windows";
             TestProject testProject = new TestProject()
             {
                 Name = "windowsDesktopSdk",
@@ -105,7 +105,7 @@ namespace Microsoft.NET.Build.Tests
         [WindowsOnlyFact]
         public void It_does_not_warn_when_multitargeting()
         {
-            var targetFramework = "net5.0;net472;netcoreapp3.1";
+            var targetFramework = $"{ToolsetInfo.CurrentTargetFramework};net472;netcoreapp3.1";
             TestProject testProject = new TestProject()
             {
                 Name = "windowsDesktopSdk",
@@ -180,7 +180,7 @@ namespace Microsoft.NET.Build.Tests
             var testProject = new TestProject()
             {
                 Name = "InvalidWindowsVersion",
-                TargetFrameworks = "net5.0-windows1.0"
+                TargetFrameworks = $"{ToolsetInfo.CurrentTargetFramework}-windows1.0"
             };
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
@@ -200,7 +200,7 @@ namespace Microsoft.NET.Build.Tests
             var testProject = new TestProject()
             {
                 Name = "ValidWindowsVersion",
-                TargetFrameworks = setInTargetframework ? "net5.0-windows10.0.18362" : "net5.0"
+                TargetFrameworks = setInTargetframework ? $"{ToolsetInfo.CurrentTargetFramework}-windows10.0.18362" : ToolsetInfo.CurrentTargetFramework
             };
             if (!setInTargetframework)
             {
@@ -227,7 +227,7 @@ namespace Microsoft.NET.Build.Tests
             var testProject = new TestProject()
             {
                 Name = "InvalidTargetPlatform",
-                TargetFrameworks = "net5.0-custom1.0"
+                TargetFrameworks = $"{ToolsetInfo.CurrentTargetFramework}-custom1.0"
             };
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
@@ -284,7 +284,7 @@ namespace Microsoft.NET.Build.Tests
         {
             var testProject = new TestProject()
             {
-                TargetFrameworks = "net5.0-windows"
+                TargetFrameworks = $"{ToolsetInfo.CurrentTargetFramework}-windows"
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
@@ -316,7 +316,7 @@ namespace Microsoft.NET.Build.Tests
         {
             var testProject = new TestProject()
             {
-                TargetFrameworks = "net5.0-windows10.0.19041.0"
+                TargetFrameworks = $"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0"
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
@@ -345,8 +345,8 @@ namespace Microsoft.NET.Build.Tests
         }
 
         [WindowsOnlyTheory]
-        [InlineData("net5.0", true)]
-        [InlineData("net5.0-windows10.0.19041.0", true)]
+        [InlineData(ToolsetInfo.CurrentTargetFramework, true)]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0", true)]
         [InlineData("netcoreapp3.1", false)]
         [InlineData("net472", false)]
         public void WindowsWorkloadIsInstalledForNet5AndUp(string targetFramework, bool supportsWindowsTargetPlatformIdentifier)
@@ -378,14 +378,14 @@ namespace Microsoft.NET.Build.Tests
 
         [WindowsOnlyTheory]
         //  Basic Windows TargetFramework
-        [InlineData("net5.0-windows10.0.19041.0", false, null, "10.0.19041.*")]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0", false, null, "10.0.19041.*")]
         //  Basic UseWindowsSdkPreview usage
-        [InlineData("net5.0-windows10.0.99999.0", true, null, "10.0.99999-preview")]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.99999.0", true, null, "10.0.99999-preview")]
         //  Basic WindowsSdkPackageVersion usage
-        [InlineData("net5.0-windows10.0.19041.0", null, "10.0.99999-abc", "10.0.99999-abc")]
-        [InlineData("net5.0-windows10.0.19041.0", null, "10.0.99999.0", "10.0.99999.0")]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0", null, "10.0.99999-abc", "10.0.99999-abc")]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0", null, "10.0.99999.0", "10.0.99999.0")]
         //  WindowsSdkPackageVersion should supercede UseWindowsSDKPreview property
-        [InlineData("net5.0-windows10.0.19041.0", true, "10.0.99999-abc", "10.0.99999-abc")]
+        [InlineData($"{ToolsetInfo.CurrentTargetFramework}-windows10.0.19041.0", true, "10.0.99999-abc", "10.0.99999-abc")]
         public void ItUsesCorrectWindowsSdkPackVersion(string targetFramework, bool? useWindowsSDKPreview, string windowsSdkPackageVersion, string expectedWindowsSdkPackageVersion)
         {
             var testProject = new TestProject()
@@ -403,6 +403,55 @@ namespace Microsoft.NET.Build.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework + useWindowsSDKPreview + windowsSdkPackageVersion);
 
+            string referencedWindowsSdkVersion =  GetReferencedWindowsSdkVersion(testAsset);
+
+            //  The patch version of the Windows SDK Ref pack will change over time, so we use a '*' in the expected version to indicate that and replace it with
+            //  the 4th part of the version number of the resolved package.
+            if (expectedWindowsSdkPackageVersion.Contains('*'))
+            {
+                expectedWindowsSdkPackageVersion = expectedWindowsSdkPackageVersion.Replace("*", new Version(referencedWindowsSdkVersion).Revision.ToString());
+            }
+
+            referencedWindowsSdkVersion.Should().Be(expectedWindowsSdkPackageVersion);
+        }
+
+        [WindowsOnlyTheory]
+        [InlineData("net5.0-windows10.0.22000.0", "10.0.22000.25")]
+        [InlineData("net6.0-windows10.0.22000.0", "10.0.22000.26")]
+        [InlineData("net6.0-windows10.0.19041.0", "10.0.19041.25")]
+        public void ItUsesTheHighestMatchingWindowsSdkPackageVersion(string targetFramework, string expectedWindowsSdkPackageVersion)
+        {
+            var testProject = new TestProject()
+            {
+                TargetFrameworks = targetFramework
+            };
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework)
+                .WithProjectChanges(project =>
+                {
+                    //  Add items for available SDK versions for test
+                    var testItems = XElement.Parse(@"
+  <ItemGroup>
+    <WindowsSdkSupportedTargetPlatformVersion Remove=""@(WindowsSdkSupportedTargetPlatformVersion)"" />
+
+    <WindowsSdkSupportedTargetPlatformVersion Include=""10.0.22621.0"" WindowsSdkPackageVersion=""10.0.22621.26"" MinimumNETVersion=""6.0"" />
+
+    <WindowsSdkSupportedTargetPlatformVersion Include=""10.0.22000.0"" WindowsSdkPackageVersion=""10.0.22000.26"" MinimumNETVersion=""6.0"" />
+    <WindowsSdkSupportedTargetPlatformVersion Include=""10.0.22000.0"" WindowsSdkPackageVersion=""10.0.22000.25"" MinimumNETVersion=""5.0"" />
+
+    <WindowsSdkSupportedTargetPlatformVersion Include=""10.0.19041.0"" WindowsSdkPackageVersion=""10.0.19041.25"" MinimumNETVersion=""5.0"" />
+  </ItemGroup>");
+
+                    project.Root.Add(testItems);
+                });
+
+            string referencedWindowsSdkVersion = GetReferencedWindowsSdkVersion(testAsset);
+            referencedWindowsSdkVersion.Should().Be(expectedWindowsSdkPackageVersion);
+
+        }
+
+        private string GetReferencedWindowsSdkVersion(TestAsset testAsset)
+        {
             var getValueCommand = new GetValuesCommand(testAsset, "PackageDownload", GetValuesCommand.ValueType.Item);
             getValueCommand.ShouldRestore = false;
             getValueCommand.DependsOnTargets = "_CheckForInvalidConfigurationAndPlatform;CollectPackageDownloads";
@@ -419,15 +468,7 @@ namespace Microsoft.NET.Build.Tests
             packageDownloadVersion[0].Should().Be('[');
             packageDownloadVersion.Last().Should().Be(']');
 
-            //  The patch version of the Windows SDK Ref pack will change over time, so we use a '*' in the expected version to indicate that and replace it with
-            //  the 4th part of the version number of the resolved package.
-            var trimmedPackageDownloadVersion = packageDownloadVersion.Substring(1, packageDownloadVersion.Length - 2);
-            if (expectedWindowsSdkPackageVersion.Contains('*'))
-            {
-                expectedWindowsSdkPackageVersion = expectedWindowsSdkPackageVersion.Replace("*", new Version(trimmedPackageDownloadVersion).Revision.ToString());
-            }
-
-            trimmedPackageDownloadVersion.Should().Be(expectedWindowsSdkPackageVersion);
+            return packageDownloadVersion.Substring(1, packageDownloadVersion.Length - 2);
         }
 
         private string GetPropertyValue(TestAsset testAsset, string propertyName)

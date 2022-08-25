@@ -36,7 +36,7 @@ namespace MyNamespace
         // We need to target a framework compatible with what the test is being
         // built for so that we resolve the references correctly.
 #if NETCOREAPP
-        private const string TargetFrameworks = "net5.0";
+        private const string TargetFrameworks = ToolsetInfo.CurrentTargetFramework;
 #else
         private const string TargetFrameworks = "net471";
 #endif
@@ -100,17 +100,6 @@ namespace MyNamespace
         {
             AssemblySymbolLoader loader = new();
             Assert.Throws<FileNotFoundException>(() => loader.LoadAssembly(Guid.NewGuid().ToString("N").Substring(0, 8)));
-            Assert.Throws<ArgumentNullException>("path", () => loader.LoadAssembly(null));
-            Assert.Throws<ArgumentNullException>("stream", () => loader.LoadAssembly("Assembly", null));
-            Assert.Throws<ArgumentNullException>("name", () => loader.LoadAssembly(null, new MemoryStream()));
-        }
-
-        [Fact]
-        public void LoadAssemblies_Throws()
-        {
-            AssemblySymbolLoader loader = new();
-            Assert.Throws<ArgumentNullException>("paths", () => loader.LoadAssemblies((string)null));
-            Assert.Throws<ArgumentNullException>("paths", () => loader.LoadAssemblies((IEnumerable<string>)null));
         }
 
         [Fact]
@@ -119,7 +108,6 @@ namespace MyNamespace
             AssemblySymbolLoader loader = new();
             IEnumerable<string> paths = new[] { Guid.NewGuid().ToString("N") };
             Assert.Throws<FileNotFoundException>(() => loader.LoadAssemblyFromSourceFiles(paths, "assembly1", Array.Empty<string>()));
-            Assert.Throws<ArgumentNullException>("filePaths", () => loader.LoadAssemblyFromSourceFiles(null, "assembly1", Array.Empty<string>()));
             Assert.Throws<ArgumentNullException>("filePaths", () => loader.LoadAssemblyFromSourceFiles(Array.Empty<string>(), "assembly1", Array.Empty<string>()));
             Assert.Throws<ArgumentNullException>("assemblyName", () => loader.LoadAssemblyFromSourceFiles(paths, null, Array.Empty<string>()));
         }
@@ -132,8 +120,6 @@ namespace MyNamespace
             IAssemblySymbol assembly = SymbolFactory.GetAssemblyFromSyntax("namespace MyNamespace { class Foo { } }");
 
             Assert.Throws<FileNotFoundException>(() => loader.LoadMatchingAssemblies(new[] { assembly }, paths));
-            Assert.Throws<ArgumentNullException>("fromAssemblies", () => loader.LoadMatchingAssemblies(null, paths));
-            Assert.Throws<ArgumentNullException>("searchPaths", () => loader.LoadMatchingAssemblies(Array.Empty<IAssemblySymbol>(), null));
         }
 
         [Fact]
@@ -145,7 +131,7 @@ namespace MyNamespace
             AssemblySymbolLoader loader = new();
             IEnumerable<IAssemblySymbol> symbols = loader.LoadMatchingAssemblies(new[] { assembly }, paths);
             Assert.Empty(symbols);
-            Assert.True(loader.HasLoadWarnings(out IEnumerable<AssemblyLoadWarning> warnings));
+            Assert.True(loader.HasLoadWarnings(out IReadOnlyList<AssemblyLoadWarning> warnings));
 
             IEnumerable<AssemblyLoadWarning> expected = new[]
             {
@@ -163,7 +149,7 @@ namespace MyNamespace
 
             TestProject testProject = new(assemblyName)
             {
-                TargetFrameworks = "net5.0",
+                TargetFrameworks = ToolsetInfo.CurrentTargetFramework,
                 IsExe = false,
             };
 
@@ -196,7 +182,7 @@ namespace MyNamespace
             if (validateIdentities)
             {
                 Assert.Empty(matchingAssemblies);
-                Assert.True(loader.HasLoadWarnings(out IEnumerable<AssemblyLoadWarning> warnings));
+                Assert.True(loader.HasLoadWarnings(out IReadOnlyList<AssemblyLoadWarning> warnings));
 
                 IEnumerable<AssemblyLoadWarning> expected = new[]
                 {
@@ -291,7 +277,7 @@ namespace MyNamespace
 
             if (resolveReferences)
             {
-                Assert.True(loader.HasLoadWarnings(out IEnumerable<AssemblyLoadWarning> warnings));
+                Assert.True(loader.HasLoadWarnings(out IReadOnlyList<AssemblyLoadWarning> warnings));
 
                 string expectedReference = "System.Runtime.dll";
 
@@ -309,7 +295,7 @@ namespace MyNamespace
             }
             else
             {
-                Assert.False(loader.HasLoadWarnings(out IEnumerable<AssemblyLoadWarning> warnings));
+                Assert.False(loader.HasLoadWarnings(out IReadOnlyList<AssemblyLoadWarning> warnings));
                 Assert.Empty(warnings);
             }
         }
@@ -320,11 +306,11 @@ namespace MyNamespace
             var assetInfo = GetSimpleTestAsset();
             AssemblySymbolLoader loader = new(resolveAssemblyReferences: true);
             // AddReferenceSearchDirectories should be able to handle directories as well as full path to assemblies.
-            loader.AddReferenceSearchDirectories(Path.GetDirectoryName(typeof(string).Assembly.Location));
-            loader.AddReferenceSearchDirectories(Path.GetFullPath(typeof(string).Assembly.Location));
+            loader.AddReferenceSearchPaths(Path.GetDirectoryName(typeof(string).Assembly.Location));
+            loader.AddReferenceSearchPaths(Path.GetFullPath(typeof(string).Assembly.Location));
             loader.LoadAssembly(Path.Combine(assetInfo.OutputDirectory, assetInfo.TestAsset.TestProject.Name + ".dll"));
 
-            Assert.False(loader.HasLoadWarnings(out IEnumerable<AssemblyLoadWarning> warnings));
+            Assert.False(loader.HasLoadWarnings(out IReadOnlyList<AssemblyLoadWarning> warnings));
             Assert.Empty(warnings);
 
             // Ensure we loaded more than one assembly since resolveReferences was set to true.

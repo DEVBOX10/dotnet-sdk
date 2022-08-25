@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.Linq;
@@ -65,7 +66,7 @@ namespace Microsoft.DotNet.Cli
 
         public static bool IsTopLevelDotnetCommand(this ParseResult parseResult)
         {
-            return parseResult.CommandResult.Command.Equals(RootCommand) && string.IsNullOrEmpty(parseResult.RootSubCommandResult());
+            return parseResult.CommandResult.Command.Equals(Parser.RootCommand) && string.IsNullOrEmpty(parseResult.RootSubCommandResult());
         }
 
         public static bool CanBeInvoked(this ParseResult parseResult)
@@ -190,6 +191,42 @@ namespace Microsoft.DotNet.Cli
             if (parseResult.HasOption(CommonOptions.DebugOption))
             {
                 DebugHelper.WaitForDebugger();
+            }
+        }
+
+        /// <summary>
+        /// Only returns the value for this option if the option is present and there are no parse errors for that option.
+        /// This allows cross-cutting code like the telemetry filters to safely get the value without throwing on null-ref errors.
+        /// If you are inside a command handler or 'normal' System.CommandLine code then you don't need this - the parse error handling
+        /// will have covered these cases.
+        /// </summary>
+        public static object SafelyGetValueForOption(this ParseResult parseResult, Option optionToGet)
+        {
+            if (parseResult.FindResultFor(optionToGet) is OptionResult optionResult &&
+                !parseResult.Errors.Any(e => e.SymbolResult == optionResult))
+            {
+                return optionResult.GetValueForOption(optionToGet);
+            } 
+            else {
+                return default;
+            }
+        }
+
+        /// <summary>
+        /// Only returns the value for this option if the option is present and there are no parse errors for that option.
+        /// This allows cross-cutting code like the telemetry filters to safely get the value without throwing on null-ref errors.
+        /// If you are inside a command handler or 'normal' System.CommandLine code then you don't need this - the parse error handling
+        /// will have covered these cases.
+        /// </summary>
+        public static T SafelyGetValueForOption<T>(this ParseResult parseResult, Option<T> optionToGet)
+        {
+            if (parseResult.FindResultFor(optionToGet) is OptionResult optionResult &&
+                !parseResult.Errors.Any(e => e.SymbolResult == optionResult))
+            {
+                return optionResult.GetValueForOption(optionToGet);
+            } 
+            else {
+                return default;
             }
         }
     }
