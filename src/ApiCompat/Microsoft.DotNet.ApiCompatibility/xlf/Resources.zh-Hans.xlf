@@ -14,7 +14,7 @@
       </trans-unit>
       <trans-unit id="AssemblyCultureDoesNotMatch">
         <source>{2} assembly culture '{0}' does not match with {3} assembly culture '{1}'.</source>
-        <target state="new">{2} assembly culture '{0}' does not match with {3} assembly culture '{1}'.</target>
+        <target state="translated">{2} 程序集区域性“{0}”与 {3} 程序集区域性“{1}”不匹配。</target>
         <note />
       </trans-unit>
       <trans-unit id="AssemblyLoadError">
@@ -44,7 +44,7 @@
       </trans-unit>
       <trans-unit id="AssemblyVersionDoesNotMatch">
         <source>{3} assembly version '{1}' should be equal to {2} version '{0}'.</source>
-        <target state="new">{3} assembly version '{1}' should be equal to {2} version '{0}'.</target>
+        <target state="translated">{3} 程序集版本“{1}”应等于 {2} 版本“{0}”。</target>
         <note />
       </trans-unit>
       <trans-unit id="AssemblyVersionIsNotCompatible">
@@ -59,12 +59,17 @@
       </trans-unit>
       <trans-unit id="CannotAddAttribute">
         <source>Cannot add attribute '{0}' to '{1}'.</source>
-        <target state="new">Cannot add attribute '{0}' to '{1}'.</target>
+        <target state="translated">无法将属性 "{0}" 添加到 "{1}"。</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotAddMemberToInterface">
         <source>Cannot add interface member '{0}' to {1} because it does not exist on {2}</source>
         <target state="translated">无法将接口成员“{0}”添加到 {1}，因为它在 {2} 上不存在</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotAddSealedToInterfaceMember">
+        <source>Cannot add sealed keyword to default interface member '{0}'.</source>
+        <target state="translated">无法将密封关键字添加到默认接口成员 "{0}"。</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotAddVirtualToMember">
@@ -74,17 +79,27 @@
       </trans-unit>
       <trans-unit id="CannotChangeAttribute">
         <source>Cannot change arguments of attribute '{0}' on '{1}'.</source>
-        <target state="new">Cannot change arguments of attribute '{0}' on '{1}'.</target>
+        <target state="translated">无法更改 "{1}" 上 "{0}" 属性的参数。</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotChangeParameterName">
         <source>Parameter name on member '{0}' changed from '{1}' to '{2}'.</source>
-        <target state="new">Parameter name on member '{0}' changed from '{1}' to '{2}'.</target>
+        <target state="translated">成员 "{0}" 上的参数名称已从 "{1}" 更改为 "{2}"。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotExpandVisibility">
+        <source>Visibility of '{0}' expanded from '{1}' to '{2}'.</source>
+        <target state="translated">"{0}" 的可见性从 "{1}" 扩展到了 "{2}"。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotReduceVisibility">
+        <source>Visibility of '{0}' reduced from '{1}' to '{2}'.</source>
+        <target state="translated">"{0}" 的可见性从 "{1}" 缩减到了 "{2}"。</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotRemoveAttribute">
         <source>Cannot remove attribute '{0}' from '{1}'.</source>
-        <target state="new">Cannot remove attribute '{0}' from '{1}'.</target>
+        <target state="translated">无法从 "{1}" 中删除属性 "{0}"。</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotRemoveBaseInterface">
@@ -102,11 +117,6 @@
         <target state="translated">无法从成员“{0}”中删除虚拟关键字。</target>
         <note />
       </trans-unit>
-      <trans-unit id="CouldNotResolveReference">
-        <source>Could not resolve reference '{0}' in any of the provided search directories.</source>
-        <target state="translated">无法在任何提供的搜索目录中解析引用“{0}”。</target>
-        <note />
-      </trans-unit>
       <trans-unit id="ElementShouldNotBeNullAtIndex">
         <source>Element should not be null. Found null at index: {0}.</source>
         <target state="translated">元素不应为 null。在索引 {0} 找到 null。</target>
@@ -120,11 +130,6 @@
       <trans-unit id="EnumValuesMustMatch">
         <source>Value of field '{1}' in enum '{0}' changed from '{2}' to '{3}'.</source>
         <target state="translated">枚举“{0}”中字段“{1}”的值已从“{2}”更改为“{3}”。</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="FileDoesNotExist">
-        <source>File '{0}' does not exist.</source>
-        <target state="translated">文件“{0}”不存在。</target>
         <note />
       </trans-unit>
       <trans-unit id="IndexShouldBeWithinSetSizeRange">
@@ -147,16 +152,6 @@
         <target state="translated">成员“{0}”在 {2} 上存在，但在 {1} 上不存在</target>
         <note />
       </trans-unit>
-      <trans-unit id="ProvidedPathToLoadBinariesFromNotFound">
-        <source>Could not find the provided path '{0}' to load binaries from.</source>
-        <target state="translated">找不到所提供的要从中加载二进制文件的路径“{0}”。</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ProvidedStreamDoesNotHaveMetadata">
-        <source>Provided stream for assembly '{0}' doesn't have any metadata to read. from.</source>
-        <target state="translated">为程序集“{0}”提供的流没有任何可供读取的元数据。</target>
-        <note />
-      </trans-unit>
       <trans-unit id="RightNamesAtLeastOne">
         <source>Should at least contain one right name.</source>
         <target state="translated">应至少包含一个权限名称。</target>
@@ -165,21 +160,6 @@
       <trans-unit id="ShouldBeGreaterThanZero">
         <source>Value should be greater than 0.</source>
         <target state="translated">值应大于 0。</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ShouldNotBeNullAndContainAtLeastOneElement">
-        <source>Should not be null and contain at least one element.</source>
-        <target state="translated">不应为 null，并且应至少包含一个元素。</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ShouldProvideValidAssemblyName">
-        <source>Should provide a valid assembly name.</source>
-        <target state="translated">应提供有效的程序集名称。</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="StreamPositionGreaterThanLength">
-        <source>Stream position is greater than it's length, so there are no contents available to read.</source>
-        <target state="translated">流位置大于其长度，因此没有可供读取的内容。</target>
         <note />
       </trans-unit>
       <trans-unit id="TypeIsActuallySealed">
@@ -194,7 +174,7 @@
       </trans-unit>
       <trans-unit id="TypeMissingOnSide">
         <source>Type '{0}' exists on {1} but not on {2}</source>
-        <target state="new">Type '{0}' exists on {1} but not on {2}</target>
+        <target state="translated">类型“{0}”在 {1} 上存在，但在 {2} 上不存在</target>
         <note />
       </trans-unit>
       <trans-unit id="VisitorRightCountShouldMatchMappersSetSize">

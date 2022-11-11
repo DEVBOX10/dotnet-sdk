@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
 using Microsoft.DotNet.ApiCompatibility.Logging;
+using Microsoft.DotNet.ApiSymbolExtensions;
 using Moq;
 using Xunit;
 
@@ -64,10 +65,11 @@ namespace Microsoft.DotNet.ApiCompatibility.Runner.Tests
             MetadataInformation right1 = new("A.dll", @"lib\netstandard2.0\A.dll");
             MetadataInformation right2 = new("A.dll", @"lib\net462\A.dll");
 
-            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right1, right2));
+            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right1));
+            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right2));
 
             Assert.Single(apiCompatRunner.WorkItems);
-            Assert.Equal(2, apiCompatRunner.WorkItems.First().Rights.Count);
+            Assert.Equal(2, apiCompatRunner.WorkItems.First().Right.Count);
         }
 
         [Fact]
@@ -78,10 +80,11 @@ namespace Microsoft.DotNet.ApiCompatibility.Runner.Tests
             MetadataInformation left = new("A.dll", @"lib\netstandard2.0\A.dll");
             MetadataInformation right = new("A.dll", @"lib\net462\A.dll");
 
-            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right, right));
+            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right));
+            apiCompatRunner.EnqueueWorkItem(new ApiCompatRunnerWorkItem(left, new ApiCompatRunnerOptions(), right));
 
             Assert.Single(apiCompatRunner.WorkItems);
-            Assert.Single(apiCompatRunner.WorkItems.First().Rights);
+            Assert.Single(apiCompatRunner.WorkItems.First().Right);
         }
 
         [Fact]

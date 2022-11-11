@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Jab;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
 using Microsoft.DotNet.ApiCompatibility.Logging;
 using Microsoft.DotNet.ApiCompatibility.Rules;
@@ -12,34 +11,14 @@ using Microsoft.DotNet.ApiCompatibility.Runner;
 
 namespace Microsoft.DotNet.ApiCompat
 {
-    [ServiceProvider(RootServices = new[] { typeof(IEnumerable<IRule>) })]
-    [Import(typeof(IApiCompatServiceProviderModule))]
-    internal partial class ValidateAssembliesServiceProvider : IApiCompatServiceProviderModule
-    {
-        public Func<ICompatibilityLogger> LogFactory { get; }
-
-        public Func<ISuppressionEngine> SuppressionEngineFactory { get; }
-
-        public Func<IRuleFactory> RuleFactory { get; }
-
-        public ValidateAssembliesServiceProvider(Func<ISuppressionEngine, ICompatibilityLogger> logFactory,
-            Func<ISuppressionEngine> suppressionEngineFactory,
-            Func<ICompatibilityLogger, IRuleFactory> ruleFactory)
-        {
-            // It's important to use GetService<T> here instead of directly invoking the factory
-            // to avoid two instances being created when retrieving a singleton.
-            LogFactory = () => logFactory(GetService<ISuppressionEngine>());
-            SuppressionEngineFactory = suppressionEngineFactory;
-            RuleFactory = () => ruleFactory(GetService<ICompatibilityLogger>());
-        }
-    }
-
     internal static class ValidateAssemblies
     {
         public static void Run(Func<ISuppressionEngine, ICompatibilityLogger> logFactory,
             bool generateSuppressionFile,
-            string? suppressionFile,
+            string[]? suppressionFiles,
+            string? suppressionOutputFile,
             string? noWarn,
+            bool enableRuleAttributesMustMatch,
             string[]? excludeAttributesFiles,
             bool enableRuleCannotChangeParameterName,
             string[] leftAssemblies,
@@ -51,15 +30,15 @@ namespace Microsoft.DotNet.ApiCompat
             (string CaptureGroupPattern, string ReplacementString)[]? leftAssembliesTransformationPatterns,
             (string CaptureGroupPattern, string ReplacementString)[]? rightAssembliesTransformationPatterns)
         {
-            // Configure the suppression engine. Ignore the passed in suppression file if it should be generated and doesn't yet exist.
-            string? suppressionFileForEngine = generateSuppressionFile && !File.Exists(suppressionFile) ? null : suppressionFile;
-
             // Initialize the service provider
-            ValidateAssembliesServiceProvider serviceProvider = new(logFactory,
-                () => new SuppressionEngine(suppressionFileForEngine, noWarn, generateSuppressionFile),
-                (log) => new RuleFactory(log, excludeAttributesFiles, enableRuleCannotChangeParameterName));
+            ApiCompatServiceProvider serviceProvider = new(logFactory,
+                () => new SuppressionEngine(suppressionFiles, noWarn, generateSuppressionFile),
+                (log) => new RuleFactory(log,
+                    enableRuleAttributesMustMatch,
+                    excludeAttributesFiles,
+                    enableRuleCannotChangeParameterName));
 
-            IApiCompatRunner apiCompatRunner = serviceProvider.GetService<IApiCompatRunner>();
+            IApiCompatRunner apiCompatRunner = serviceProvider.ApiCompatRunner;
             ApiCompatRunnerOptions apiCompatOptions = new(enableStrictMode);
 
             // Optionally provide a string transformer if a transformation pattern is passed in.
@@ -108,9 +87,10 @@ namespace Microsoft.DotNet.ApiCompat
 
             if (generateSuppressionFile)
             {
-                SuppressionFileHelper.GenerateSuppressionFile(serviceProvider.GetService<ISuppressionEngine>(),
-                    serviceProvider.GetService<ICompatibilityLogger>(),
-                    suppressionFile);
+                SuppressionFileHelper.GenerateSuppressionFile(serviceProvider.SuppressionEngine,
+                    serviceProvider.CompatibilityLogger,
+                    suppressionFiles,
+                    suppressionOutputFile);
             }
         }
 

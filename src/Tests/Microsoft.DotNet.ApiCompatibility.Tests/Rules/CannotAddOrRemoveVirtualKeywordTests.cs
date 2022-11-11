@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
 using Microsoft.DotNet.ApiCompatibility.Tests;
+using Microsoft.DotNet.ApiSymbolExtensions.Tests;
 using Xunit;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules.Tests
@@ -71,6 +72,13 @@ namespace CompatTests {{
                 CreateDifferences((DifferenceType.Removed, "M:CompatTests.First.add_F(CompatTests.First.EventHandler)"),
                                     (DifferenceType.Removed, "M:CompatTests.First.remove_F(CompatTests.First.EventHandler)"),
                                     (DifferenceType.Removed, "E:CompatTests.First.F")),
+            };
+            // effectively sealed containing type
+            yield return new object[] {
+                CreateType(" class", "private First() {}", " public virtual void F() {}"),
+                CreateType(" class", "private First() {}", " public void F() {}"),
+                false,
+                CreateDifferences(),
             };
         }
 
@@ -203,5 +211,39 @@ namespace CompatTests
             };
             Assert.Equal(expected, differences);
         }
+
+        // Don't run this test on .NET Framework, because default interface methods weren't introduced until C# 8.
+#if !NETFRAMEWORK
+        [Fact]
+        public static void EnsureDiagnosticWhenAddingSealedToInterfaceMember()
+        {
+            string leftSyntax = @"
+namespace CompatTests
+{
+  public interface First {
+    public void F() {}
+  }
+}
+";
+            string rightSyntax = @"
+namespace CompatTests
+{
+  public interface First {
+    public sealed void F() {}
+  }
+}
+";
+            IAssemblySymbol left = SymbolFactory.GetAssemblyFromSyntax(leftSyntax);
+            IAssemblySymbol right = SymbolFactory.GetAssemblyFromSyntax(rightSyntax);
+            ApiComparer differ = new(s_ruleFactory);
+
+            IEnumerable<CompatDifference> differences = differ.GetDifferences(left, right);
+
+            Assert.Equal(new CompatDifference[]
+            {
+                CompatDifference.CreateWithDefaultMetadata(DiagnosticIds.CannotAddSealedToInterfaceMember, string.Empty, DifferenceType.Added, "M:CompatTests.First.F")
+            }, differences);
+        }
+#endif
     }
 }

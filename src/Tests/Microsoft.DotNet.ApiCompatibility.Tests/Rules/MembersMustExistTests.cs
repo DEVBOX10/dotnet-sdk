@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
 using Microsoft.DotNet.ApiCompatibility.Tests;
+using Microsoft.DotNet.ApiSymbolExtensions.Tests;
 using Xunit;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules.Tests
@@ -385,7 +386,7 @@ namespace CompatTests
 "};
             ApiComparer differ = new(s_ruleFactory);
             ElementContainer<IAssemblySymbol> left = new(SymbolFactory.GetAssemblyFromSyntax(leftSyntax), new MetadataInformation(string.Empty, "ref"));
-            IReadOnlyList<ElementContainer<IAssemblySymbol>> right = SymbolFactory.GetElementContainersFromSyntaxes(rightSyntaxes);
+            IReadOnlyList<ElementContainer<IAssemblySymbol>> right = SymbolFactoryExtensions.GetElementContainersFromSyntaxes(rightSyntaxes);
 
             IEnumerable<CompatDifference> differences = differ.GetDifferences(left, right);
 
@@ -426,7 +427,7 @@ namespace CompatTests
             ElementContainer<IAssemblySymbol> left = new(SymbolFactory.GetAssemblyFromSyntax(leftSyntax),
                 new MetadataInformation(string.Empty, "ref"));
             string[] rightSyntaxes = new[] { leftSyntax, leftSyntax, leftSyntax, leftSyntax };
-            IReadOnlyList<ElementContainer<IAssemblySymbol>> right = SymbolFactory.GetElementContainersFromSyntaxes(rightSyntaxes);
+            IReadOnlyList<ElementContainer<IAssemblySymbol>> right = SymbolFactoryExtensions.GetElementContainersFromSyntaxes(rightSyntaxes);
             ApiComparer differ = new(s_ruleFactory);
 
             IEnumerable<CompatDifference> differences = differ.GetDifferences(left, right);
@@ -465,6 +466,40 @@ namespace CompatTests
                 CompatDifference.CreateWithDefaultMetadata(DiagnosticIds.MemberMustExist, string.Empty, DifferenceType.Removed, "M:CompatTests.First.#ctor")
             };
             Assert.Equal(expected, differences);
+        }
+
+        [Fact]
+        public void NumericPtrNotFlagged()
+        {
+            string leftSyntax = @"
+namespace CompatTests
+{
+  using System;
+
+  public class First
+  {
+    public void F(IntPtr p) {}
+    public void G(UIntPtr p) {}
+  }
+}
+";
+            string rightSyntax = @"
+namespace CompatTests
+{
+  public class First
+  {
+    public void F(nint p) {}
+    public void G(nuint p) {}
+  }
+}
+";
+            IAssemblySymbol left = SymbolFactory.GetAssemblyFromSyntax(leftSyntax);
+            IAssemblySymbol right = SymbolFactory.GetAssemblyFromSyntax(rightSyntax);
+            ApiComparer differ = new(s_ruleFactory);
+
+            IEnumerable<CompatDifference> differences = differ.GetDifferences(left, right);
+
+            Assert.Empty(differences);
         }
     }
 }

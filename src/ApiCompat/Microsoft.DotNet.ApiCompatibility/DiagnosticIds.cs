@@ -25,9 +25,11 @@ namespace Microsoft.DotNet.ApiCompatibility
         public const string CannotChangeAttribute = "CP0015";
         public const string CannotAddAttribute = "CP0016";
         public const string CannotChangeParameterName = "CP0017";
+        public const string CannotAddSealedToInterfaceMember = "CP0018";
+        public const string CannotReduceVisibility = "CP0019";
+        public const string CannotExpandVisibility = "CP0020";
 
         // Assembly loading ids
-        public const string AssemblyNotFound = "CP1001";
         public const string AssemblyReferenceNotFound = "CP1002";
     }
 }

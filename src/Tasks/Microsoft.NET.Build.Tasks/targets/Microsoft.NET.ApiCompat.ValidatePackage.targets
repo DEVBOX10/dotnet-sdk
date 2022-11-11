@@ -19,7 +19,9 @@ Copyright (c) .NET Foundation. All rights reserved.
   <Target Name="RunPackageValidation"
           DependsOnTargets="$(RunPackageValidationDependsOn)"
           AfterTargets="Pack"
-          Inputs="@(NuGetPackInput);$(CompatibilitySuppressionFilePath)"
+          Inputs="@(NuGetPackInput);
+                  @(ApiCompatSuppressionFile);
+                  $(ApiCompatSuppressionOutputFile)"
           Outputs="$(ApiCompatValidatePackageSemaphoreFile)"
           Condition="'$(EnablePackageValidation)' == 'true' and '$(IsPackable)' == 'true'">
     <PropertyGroup>
@@ -38,14 +40,16 @@ Copyright (c) .NET Foundation. All rights reserved.
       PackageTargetPath="@(_PackageTargetPath)"
       RuntimeGraph="$(RuntimeIdentifierGraphPath)"
       NoWarn="$(NoWarn)"
+      EnableRuleAttributesMustMatch="$(ApiCompatEnableRuleAttributesMustMatch)"
       ExcludeAttributesFiles="@(ApiCompatExcludeAttributesFile)"
-      EnableRuleCannotChangeParameterName="@(ApiCompatEnableRuleCannotChangeParameterName)"
+      EnableRuleCannotChangeParameterName="$(ApiCompatEnableRuleCannotChangeParameterName)"
       RunApiCompat="$(RunApiCompat)"
       EnableStrictModeForCompatibleTfms="$([MSBuild]::ValueOrDefault('$(EnableStrictModeForCompatibleTfms)', 'true'))"
       EnableStrictModeForCompatibleFrameworksInPackage="$(EnableStrictModeForCompatibleFrameworksInPackage)"
       EnableStrictModeForBaselineValidation="$(EnableStrictModeForBaselineValidation)"
-      GenerateCompatibilitySuppressionFile="$(GenerateCompatibilitySuppressionFile)"
-      CompatibilitySuppressionFilePath="$(CompatibilitySuppressionFilePath)"
+      GenerateSuppressionFile="$(ApiCompatGenerateSuppressionFile)"
+      SuppressionFiles="@(ApiCompatSuppressionFile)"
+      SuppressionOutputFile="$(ApiCompatSuppressionOutputFile)"
       BaselinePackageTargetPath="$(_packageValidationBaselinePath)"
       RoslynAssembliesPath="$(RoslynAssembliesPath)"
       PackageAssemblyReferences="@(PackageValidationReferencePath)" />
@@ -53,11 +57,12 @@ Copyright (c) .NET Foundation. All rights reserved.
     <Touch Files="$(ApiCompatValidatePackageSemaphoreFile)" AlwaysCreate="true" />
   </Target>
 
-  <Target Name="_GetReferencePathForPackageValidation"
-          DependsOnTargets="ResolveReferences"
-          Returns="@(_ReferencePathWithTargetFramework)">
+  <Target Name="GetReferencesForApiCompatValidatePackage"
+          DependsOnTargets="FindReferenceAssembliesForReferences"
+          Returns="@(ApiCompatAssemblyReferencesWithTargetFramework)">
     <ItemGroup>
-      <_ReferencePathWithTargetFramework Include="$(TargetFramework)" ReferencePath="@(ReferencePath, ',')" />
+      <ApiCompatAssemblyReferencesWithTargetFramework Include="$(TargetFramework)"
+                                                      ReferencePath="@(ReferencePathWithRefAssemblies, ',')" />
     </ItemGroup>
   </Target>
 
@@ -66,7 +71,7 @@ Copyright (c) .NET Foundation. All rights reserved.
           DependsOnTargets="_GetTargetFrameworksOutput"
           Condition="'$(RunPackageValidationWithoutReferences)' != 'true'">
     <MSBuild Projects="$(MSBuildProjectFullPath)"
-             Targets="_GetReferencePathForPackageValidation"
+             Targets="GetReferencesForApiCompatValidatePackage"
              Properties="TargetFramework=%(_TargetFrameworks.Identity);
                          BuildProjectReferences=false">
       <Output ItemName="PackageValidationReferencePath" TaskParameter="TargetOutputs" />

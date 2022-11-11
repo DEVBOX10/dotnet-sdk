@@ -35,19 +35,29 @@ namespace Microsoft.DotNet.ApiCompat.Task
         public string? RoslynAssembliesPath { get; set; }
 
         /// <summary>
-        /// If true, generates a compatibility suppression file that contains the api compatibility errors.
+        /// If true, generates a suppression file that contains the api compatibility errors.
         /// </summary>
-        public bool GenerateCompatibilitySuppressionFile { get; set; }
+        public bool GenerateSuppressionFile { get; set; }
 
         /// <summary>
-        /// The path to a compatibility suppression file. If provided, the suppressions are read and stored.
+        /// The path to suppression files. If provided, the suppressions are read and stored.
         /// </summary>
-        public string? CompatibilitySuppressionFilePath { get; set; }
+        public string[]? SuppressionFiles { get; set; }
+
+        /// <summary>
+        /// The path to the suppression output file that is written to, when <see cref="GenerateCompatibilitySuppressionFile"/> is true.
+        /// </summary>
+        public string? SuppressionOutputFile { get; set; }
 
         /// <summary>
         /// A NoWarn string contains the error codes that should be ignored.
         /// </summary>
         public string? NoWarn { get; set; }
+
+        /// <summary>
+        /// Enables rule to check that attributes match.
+        /// </summary>
+        public bool EnableRuleAttributesMustMatch { get; set; }
 
         /// <summary>
         /// Set of files with types in DocId format of which attributes to exclude.
@@ -111,9 +121,11 @@ namespace Microsoft.DotNet.ApiCompat.Task
         {
             Func<ISuppressionEngine, MSBuildCompatibilityLogger> logFactory = (suppressionEngine) => new(Log, suppressionEngine);
             ValidateAssemblies.Run(logFactory,
-                GenerateCompatibilitySuppressionFile,
-                CompatibilitySuppressionFilePath,
+                GenerateSuppressionFile,
+                SuppressionFiles,
+                SuppressionOutputFile,
                 NoWarn,
+                EnableRuleAttributesMustMatch,
                 ExcludeAttributesFiles,
                 EnableRuleCannotChangeParameterName,
                 LeftAssemblies!,

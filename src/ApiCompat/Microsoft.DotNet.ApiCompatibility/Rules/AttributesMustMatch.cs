@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.DotNet.ApiCompatibility.Abstractions;
-using Microsoft.DotNet.ApiCompatibility.Extensions;
+using Microsoft.DotNet.ApiSymbolExtensions;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
@@ -24,13 +24,14 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
         public AttributesMustMatch(RuleSettings settings, IRuleRegistrationContext context, IReadOnlyCollection<string>? excludeAttributesFiles)
         {
             _settings = settings;
-            if (excludeAttributesFiles != null && excludeAttributesFiles.Count > 0)
+            if (excludeAttributesFiles != null)
             {
                 IEnumerable<string> attributesToExclude = ReadExclusions(excludeAttributesFiles);
                 _attributesToExclude = new HashSet<string>(attributesToExclude);
-                context.RegisterOnMemberSymbolAction(RunOnMemberSymbol);
-                context.RegisterOnTypeSymbolAction(RunOnTypeSymbol);
             }
+
+            context.RegisterOnMemberSymbolAction(RunOnMemberSymbol);
+            context.RegisterOnTypeSymbolAction(RunOnTypeSymbol);
         }
 
         private static IEnumerable<string> ReadExclusions(IEnumerable<string> excludeAttributesFiles)
@@ -57,6 +58,11 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
             }
 
             if (attr.AttributeClass != null && !attr.AttributeClass.IsVisibleOutsideOfAssembly(_settings.IncludeInternalSymbols))
+            {
+                return;
+            }
+
+            if (!_settings.StrictMode && dt == DifferenceType.Added)
             {
                 return;
             }
@@ -166,10 +172,17 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
 
                     for (int i = 0; i < rightGroup.Attributes.Count; i++)
                     {
-                        if (!rightGroup.Seen[i])
+                        if (!rightGroup.Seen[i] && _settings.StrictMode)
                         {
                             // Attribute arguments exist on right but not left.
-                            // Issue "changed" diagnostic.
+                            // Left
+                            //   [Foo("a")]
+                            //   void F()
+                            // Right
+                            //   [Foo("a")]
+                            //   [Foo("b")]
+                            //   void F()
+                            // Issue "changed" diagnostic when in strict mode.
                             AddDifference(differences, DifferenceType.Changed, leftMetadata, rightMetadata, containing, itemRef, rightGroup.Attributes[i]);
                         }
                     }

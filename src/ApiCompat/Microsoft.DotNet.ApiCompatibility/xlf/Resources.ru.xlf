@@ -14,7 +14,7 @@
       </trans-unit>
       <trans-unit id="AssemblyCultureDoesNotMatch">
         <source>{2} assembly culture '{0}' does not match with {3} assembly culture '{1}'.</source>
-        <target state="new">{2} assembly culture '{0}' does not match with {3} assembly culture '{1}'.</target>
+        <target state="translated">Язык и региональные параметры {0} сборки "{2}" не совпадают с языком и региональными параметрами {1} сборки "{3}".</target>
         <note />
       </trans-unit>
       <trans-unit id="AssemblyLoadError">
@@ -44,7 +44,7 @@
       </trans-unit>
       <trans-unit id="AssemblyVersionDoesNotMatch">
         <source>{3} assembly version '{1}' should be equal to {2} version '{0}'.</source>
-        <target state="new">{3} assembly version '{1}' should be equal to {2} version '{0}'.</target>
+        <target state="translated">Версия "{1}" сборки {3} должна быть равна {2} версии "{0}".</target>
         <note />
       </trans-unit>
       <trans-unit id="AssemblyVersionIsNotCompatible">
@@ -59,12 +59,17 @@
       </trans-unit>
       <trans-unit id="CannotAddAttribute">
         <source>Cannot add attribute '{0}' to '{1}'.</source>
-        <target state="new">Cannot add attribute '{0}' to '{1}'.</target>
+        <target state="translated">Не удается добавить атрибут "{0}" к "{1}".</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotAddMemberToInterface">
         <source>Cannot add interface member '{0}' to {1} because it does not exist on {2}</source>
         <target state="translated">Не удается добавить член интерфейса "{0}" в {1}, поскольку он не существует в {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotAddSealedToInterfaceMember">
+        <source>Cannot add sealed keyword to default interface member '{0}'.</source>
+        <target state="translated">Не удается добавить запечатанное ключевое слово в элемент интерфейса по умолчанию "{0}".</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotAddVirtualToMember">
@@ -74,17 +79,27 @@
       </trans-unit>
       <trans-unit id="CannotChangeAttribute">
         <source>Cannot change arguments of attribute '{0}' on '{1}'.</source>
-        <target state="new">Cannot change arguments of attribute '{0}' on '{1}'.</target>
+        <target state="translated">Не удается изменить аргументы атрибута "{0}" в "{1}".</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotChangeParameterName">
         <source>Parameter name on member '{0}' changed from '{1}' to '{2}'.</source>
-        <target state="new">Parameter name on member '{0}' changed from '{1}' to '{2}'.</target>
+        <target state="translated">Имя параметра на члене "{0}" изменено с "{1}" на "{2}".</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotExpandVisibility">
+        <source>Visibility of '{0}' expanded from '{1}' to '{2}'.</source>
+        <target state="translated">Видимость "{0}" расширена с "{1}" до "{2}".</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CannotReduceVisibility">
+        <source>Visibility of '{0}' reduced from '{1}' to '{2}'.</source>
+        <target state="translated">Видимость "{0}" уменьшена с "{1}" до "{2}".</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotRemoveAttribute">
         <source>Cannot remove attribute '{0}' from '{1}'.</source>
-        <target state="new">Cannot remove attribute '{0}' from '{1}'.</target>
+        <target state="translated">Не удается удалить атрибут "{0}" из "{1}".</target>
         <note />
       </trans-unit>
       <trans-unit id="CannotRemoveBaseInterface">
@@ -102,11 +117,6 @@
         <target state="translated">Не удается удалить виртуальное ключевое слово из элемента "{0}".</target>
         <note />
       </trans-unit>
-      <trans-unit id="CouldNotResolveReference">
-        <source>Could not resolve reference '{0}' in any of the provided search directories.</source>
-        <target state="translated">Не удалось разрешить ссылку "{0}" ни в одном из указанных каталогов поиска.</target>
-        <note />
-      </trans-unit>
       <trans-unit id="ElementShouldNotBeNullAtIndex">
         <source>Element should not be null. Found null at index: {0}.</source>
         <target state="translated">Элемент не должен иметь значение NULL. Обнаружено значение NULL в индексе: {0}.</target>
@@ -120,11 +130,6 @@
       <trans-unit id="EnumValuesMustMatch">
         <source>Value of field '{1}' in enum '{0}' changed from '{2}' to '{3}'.</source>
         <target state="translated">Значение поля "{1}" в перечислении "{0}" изменено с "{2}" на "{3}".</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="FileDoesNotExist">
-        <source>File '{0}' does not exist.</source>
-        <target state="translated">Файл "{0}" не существует.</target>
         <note />
       </trans-unit>
       <trans-unit id="IndexShouldBeWithinSetSizeRange">
@@ -147,16 +152,6 @@
         <target state="translated">Элемент "{0}" существует в {2}, но не в {1}</target>
         <note />
       </trans-unit>
-      <trans-unit id="ProvidedPathToLoadBinariesFromNotFound">
-        <source>Could not find the provided path '{0}' to load binaries from.</source>
-        <target state="translated">Не удалось найти указанный путь "{0}" для загрузки двоичных файлов.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ProvidedStreamDoesNotHaveMetadata">
-        <source>Provided stream for assembly '{0}' doesn't have any metadata to read. from.</source>
-        <target state="translated">Указанный поток для сборки "{0}" не имеет метаданных для чтения. От.</target>
-        <note />
-      </trans-unit>
       <trans-unit id="RightNamesAtLeastOne">
         <source>Should at least contain one right name.</source>
         <target state="translated">Должно содержать хотя бы одно правильное имя.</target>
@@ -165,21 +160,6 @@
       <trans-unit id="ShouldBeGreaterThanZero">
         <source>Value should be greater than 0.</source>
         <target state="translated">Значение должно быть больше 0.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ShouldNotBeNullAndContainAtLeastOneElement">
-        <source>Should not be null and contain at least one element.</source>
-        <target state="translated">Не должно иметь значение NULL и содержать хотя бы один элемент.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="ShouldProvideValidAssemblyName">
-        <source>Should provide a valid assembly name.</source>
-        <target state="translated">Необходимо указать допустимое имя сборки.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="StreamPositionGreaterThanLength">
-        <source>Stream position is greater than it's length, so there are no contents available to read.</source>
-        <target state="translated">Позиция потока больше его длины, поэтому содержимое, доступное для чтения, отсутствует.</target>
         <note />
       </trans-unit>
       <trans-unit id="TypeIsActuallySealed">
@@ -194,7 +174,7 @@
       </trans-unit>
       <trans-unit id="TypeMissingOnSide">
         <source>Type '{0}' exists on {1} but not on {2}</source>
-        <target state="new">Type '{0}' exists on {1} but not on {2}</target>
+        <target state="translated">Тип "{0}" существует в {1}, но не в {2}</target>
         <note />
       </trans-unit>
       <trans-unit id="VisitorRightCountShouldMatchMappersSetSize">
