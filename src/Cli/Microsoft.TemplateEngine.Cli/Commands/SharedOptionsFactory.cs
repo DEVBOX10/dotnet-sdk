@@ -1,6 +1,5 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
 using System.CommandLine.Parsing;
@@ -134,7 +133,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
                 Description = SymbolStrings.Option_Columns,
                 AllowMultipleArgumentsPerToken = true,
             };
-            option.FromAmong(
+            option.AcceptOnlyFromAmong(
                 TabularOutputSettings.ColumnNames.Author,
                 TabularOutputSettings.ColumnNames.Language,
                 TabularOutputSettings.ColumnNames.Type,

@@ -1,5 +1,5 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,9 @@ using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
 using Microsoft.DotNet.ApiCompatibility.Logging;
+using Microsoft.DotNet.ApiSymbolExtensions.Logging;
+using Microsoft.DotNet.PackageValidation;
+using NuGet.Frameworks;
 
 namespace Microsoft.DotNet.ApiCompat.Tool
 {
@@ -32,6 +35,8 @@ namespace Microsoft.DotNet.ApiCompat.Tool
                 "The path to a suppression file to write to when --generate-suppression-file is true.");
             Option<string?> noWarnOption = new("--noWarn",
                 "A NoWarn string that allows to disable specific rules.");
+            Option<bool> respectInternalsOption = new("--respect-internals",
+                "If true, includes both internal and public API.");
             Option<string?> roslynAssembliesPathOption = new("--roslyn-assemblies-path",
                 "The path to the directory that contains the Microsoft.CodeAnalysis assemblies.")
             {
@@ -107,6 +112,7 @@ namespace Microsoft.DotNet.ApiCompat.Tool
             rootCommand.AddGlobalOption(suppressionFilesOption);
             rootCommand.AddGlobalOption(suppressionOutputFileOption);
             rootCommand.AddGlobalOption(noWarnOption);
+            rootCommand.AddGlobalOption(respectInternalsOption);
             rootCommand.AddGlobalOption(roslynAssembliesPathOption);
             rootCommand.AddGlobalOption(verbosityOption);
             rootCommand.AddGlobalOption(enableRuleAttributesMustMatchOption);
@@ -125,34 +131,36 @@ namespace Microsoft.DotNet.ApiCompat.Tool
             rootCommand.SetHandler((InvocationContext context) =>
             {
                 // If a roslyn assemblies path isn't provided, use the compiled against version from a subfolder.
-                string roslynAssembliesPath = context.ParseResult.GetValueForOption(roslynAssembliesPathOption) ??
+                string roslynAssembliesPath = context.ParseResult.GetValue(roslynAssembliesPathOption) ??
                     Path.Combine(AppContext.BaseDirectory, "codeanalysis");
                 RoslynResolver roslynResolver = RoslynResolver.Register(roslynAssembliesPath);
 
-                MessageImportance verbosity = context.ParseResult.GetValueForOption(verbosityOption);
-                bool generateSuppressionFile = context.ParseResult.GetValueForOption(generateSuppressionFileOption);
-                string[]? suppressionFiles = context.ParseResult.GetValueForOption(suppressionFilesOption);
-                string? suppressionOutputFile = context.ParseResult.GetValueForOption(suppressionOutputFileOption);
-                string? noWarn = context.ParseResult.GetValueForOption(noWarnOption);
-                bool enableRuleAttributesMustMatch = context.ParseResult.GetValueForOption(enableRuleAttributesMustMatchOption);
-                string[]? excludeAttributesFiles = context.ParseResult.GetValueForOption(excludeAttributesFilesOption);
-                bool enableRuleCannotChangeParameterName = context.ParseResult.GetValueForOption(enableRuleCannotChangeParameterNameOption);
+                MessageImportance verbosity = context.ParseResult.GetValue(verbosityOption);
+                bool generateSuppressionFile = context.ParseResult.GetValue(generateSuppressionFileOption);
+                string[]? suppressionFiles = context.ParseResult.GetValue(suppressionFilesOption);
+                string? suppressionOutputFile = context.ParseResult.GetValue(suppressionOutputFileOption);
+                string? noWarn = context.ParseResult.GetValue(noWarnOption);
+                bool respectInternals = context.ParseResult.GetValue(respectInternalsOption);
+                bool enableRuleAttributesMustMatch = context.ParseResult.GetValue(enableRuleAttributesMustMatchOption);
+                string[]? excludeAttributesFiles = context.ParseResult.GetValue(excludeAttributesFilesOption);
+                bool enableRuleCannotChangeParameterName = context.ParseResult.GetValue(enableRuleCannotChangeParameterNameOption);
 
-                string[] leftAssemblies = context.ParseResult.GetValueForOption(leftAssembliesOption)!;
-                string[] rightAssemblies = context.ParseResult.GetValueForOption(rightAssembliesOption)!;
-                bool strictMode = context.ParseResult.GetValueForOption(strictModeOption);
-                string[][]? leftAssembliesReferences = context.ParseResult.GetValueForOption(leftAssembliesReferencesOption);
-                string[][]? rightAssembliesReferences = context.ParseResult.GetValueForOption(rightAssembliesReferencesOption);
-                bool createWorkItemPerAssembly = context.ParseResult.GetValueForOption(createWorkItemPerAssemblyOption);
-                (string, string)[]? leftAssembliesTransformationPattern = context.ParseResult.GetValueForOption(leftAssembliesTransformationPatternOption);
-                (string, string)[]? rightAssembliesTransformationPattern = context.ParseResult.GetValueForOption(rightAssembliesTransformationPatternOption);
+                string[] leftAssemblies = context.ParseResult.GetValue(leftAssembliesOption)!;
+                string[] rightAssemblies = context.ParseResult.GetValue(rightAssembliesOption)!;
+                bool strictMode = context.ParseResult.GetValue(strictModeOption);
+                string[][]? leftAssembliesReferences = context.ParseResult.GetValue(leftAssembliesReferencesOption);
+                string[][]? rightAssembliesReferences = context.ParseResult.GetValue(rightAssembliesReferencesOption);
+                bool createWorkItemPerAssembly = context.ParseResult.GetValue(createWorkItemPerAssemblyOption);
+                (string, string)[]? leftAssembliesTransformationPattern = context.ParseResult.GetValue(leftAssembliesTransformationPatternOption);
+                (string, string)[]? rightAssembliesTransformationPattern = context.ParseResult.GetValue(rightAssembliesTransformationPatternOption);
 
-                Func<ISuppressionEngine, ConsoleCompatibilityLogger> logFactory = (suppressionEngine) => new(suppressionEngine, verbosity);
+                Func<ISuppressionEngine, SuppressableConsoleLog> logFactory = (suppressionEngine) => new(suppressionEngine, verbosity);
                 ValidateAssemblies.Run(logFactory,
                     generateSuppressionFile,
                     suppressionFiles,
                     suppressionOutputFile,
                     noWarn,
+                    respectInternals,
                     enableRuleAttributesMustMatch,
                     excludeAttributesFiles,
                     enableRuleCannotChangeParameterName,
@@ -193,7 +201,7 @@ namespace Microsoft.DotNet.ApiCompat.Tool
             {
                 ArgumentHelpName = "nupkg"
             };
-            Option<Dictionary<string, string[]>?> packageAssemblyReferencesOption = new("--package-assembly-references",
+            Option<Dictionary<NuGetFramework, IEnumerable<string>>?> packageAssemblyReferencesOption = new("--package-assembly-references",
                 description: "Paths to assembly references or their underlying directories for a specific target framework in the package. Values must be separated by commas: ','.",
                 parseArgument: ParsePackageAssemblyReferenceArgument)
             {
@@ -201,7 +209,7 @@ namespace Microsoft.DotNet.ApiCompat.Tool
                 Arity = ArgumentArity.ZeroOrMore,
                 ArgumentHelpName = "tfm=file1,file2,..."
             };
-            Option<Dictionary<string, string[]>?> baselinePackageAssemblyReferencesOption = new("--baseline-package-assembly-references",
+            Option<Dictionary<NuGetFramework, IEnumerable<string>>?> baselinePackageAssemblyReferencesOption = new("--baseline-package-assembly-references",
                 description: "Paths to assembly references or their underlying directories for a specific target framework in the baseline package. Values must be separated by commas: ','.",
                 parseArgument: ParsePackageAssemblyReferenceArgument)
             {
@@ -223,35 +231,37 @@ namespace Microsoft.DotNet.ApiCompat.Tool
             packageCommand.SetHandler((InvocationContext context) =>
             {
                 // If a roslyn assemblies path isn't provided, use the compiled against version from a subfolder.
-                string roslynAssembliesPath = context.ParseResult.GetValueForOption(roslynAssembliesPathOption) ??
+                string roslynAssembliesPath = context.ParseResult.GetValue(roslynAssembliesPathOption) ??
                     Path.Combine(AppContext.BaseDirectory, "codeanalysis");
                 RoslynResolver roslynResolver = RoslynResolver.Register(roslynAssembliesPath);
 
-                MessageImportance verbosity = context.ParseResult.GetValueForOption(verbosityOption);
-                bool generateSuppressionFile = context.ParseResult.GetValueForOption(generateSuppressionFileOption);
-                string[]? suppressionFiles = context.ParseResult.GetValueForOption(suppressionFilesOption);
-                string? suppressionOutputFile = context.ParseResult.GetValueForOption(suppressionOutputFileOption);
-                string? noWarn = context.ParseResult.GetValueForOption(noWarnOption);
-                bool enableRuleAttributesMustMatch = context.ParseResult.GetValueForOption(enableRuleAttributesMustMatchOption);
-                string[]? excludeAttributesFiles = context.ParseResult.GetValueForOption(excludeAttributesFilesOption);
-                bool enableRuleCannotChangeParameterName = context.ParseResult.GetValueForOption(enableRuleCannotChangeParameterNameOption);
+                MessageImportance verbosity = context.ParseResult.GetValue(verbosityOption);
+                bool generateSuppressionFile = context.ParseResult.GetValue(generateSuppressionFileOption);
+                string[]? suppressionFiles = context.ParseResult.GetValue(suppressionFilesOption);
+                string? suppressionOutputFile = context.ParseResult.GetValue(suppressionOutputFileOption);
+                string? noWarn = context.ParseResult.GetValue(noWarnOption);
+                bool respectInternals = context.ParseResult.GetValue(respectInternalsOption);
+                bool enableRuleAttributesMustMatch = context.ParseResult.GetValue(enableRuleAttributesMustMatchOption);
+                string[]? excludeAttributesFiles = context.ParseResult.GetValue(excludeAttributesFilesOption);
+                bool enableRuleCannotChangeParameterName = context.ParseResult.GetValue(enableRuleCannotChangeParameterNameOption);
 
-                string package = context.ParseResult.GetValueForArgument(packageArgument);
-                bool runApiCompat = context.ParseResult.GetValueForOption(runApiCompatOption);
-                bool enableStrictModeForCompatibleTfms = context.ParseResult.GetValueForOption(enableStrictModeForCompatibleTfmsOption);
-                bool enableStrictModeForCompatibleFrameworksInPackage = context.ParseResult.GetValueForOption(enableStrictModeForCompatibleFrameworksInPackageOption);
-                bool enableStrictModeForBaselineValidation = context.ParseResult.GetValueForOption(enableStrictModeForBaselineValidationOption);
-                string? baselinePackage = context.ParseResult.GetValueForOption(baselinePackageOption);
-                string? runtimeGraph = context.ParseResult.GetValueForOption(runtimeGraphOption);
-                Dictionary<string, string[]>? packageAssemblyReferences = context.ParseResult.GetValueForOption(packageAssemblyReferencesOption);
-                Dictionary<string, string[]>? baselinePackageAssemblyReferences = context.ParseResult.GetValueForOption(baselinePackageAssemblyReferencesOption);
+                string package = context.ParseResult.GetValue(packageArgument);
+                bool runApiCompat = context.ParseResult.GetValue(runApiCompatOption);
+                bool enableStrictModeForCompatibleTfms = context.ParseResult.GetValue(enableStrictModeForCompatibleTfmsOption);
+                bool enableStrictModeForCompatibleFrameworksInPackage = context.ParseResult.GetValue(enableStrictModeForCompatibleFrameworksInPackageOption);
+                bool enableStrictModeForBaselineValidation = context.ParseResult.GetValue(enableStrictModeForBaselineValidationOption);
+                string? baselinePackage = context.ParseResult.GetValue(baselinePackageOption);
+                string? runtimeGraph = context.ParseResult.GetValue(runtimeGraphOption);
+                Dictionary<NuGetFramework, IEnumerable<string>>? packageAssemblyReferences = context.ParseResult.GetValue(packageAssemblyReferencesOption);
+                Dictionary<NuGetFramework, IEnumerable<string>>? baselinePackageAssemblyReferences = context.ParseResult.GetValue(baselinePackageAssemblyReferencesOption);
 
-                Func<ISuppressionEngine, ConsoleCompatibilityLogger> logFactory = (suppressionEngine) => new(suppressionEngine, verbosity);
+                Func<ISuppressionEngine, SuppressableConsoleLog> logFactory = (suppressionEngine) => new(suppressionEngine, verbosity);
                 ValidatePackage.Run(logFactory,
                     generateSuppressionFile,
                     suppressionFiles,
                     suppressionOutputFile,
                     noWarn,
+                    respectInternals,
                     enableRuleAttributesMustMatch,
                     excludeAttributesFiles,
                     enableRuleCannotChangeParameterName,
@@ -312,31 +322,50 @@ namespace Microsoft.DotNet.ApiCompat.Tool
             return patterns;
         }
 
-        private static Dictionary<string, string[]>? ParsePackageAssemblyReferenceArgument(ArgumentResult argumentResult)
+        private static Dictionary<NuGetFramework, IEnumerable<string>>? ParsePackageAssemblyReferenceArgument(ArgumentResult argumentResult)
         {
-            Dictionary<string, string[]> args = new();
+            const string invalidPackageAssemblyReferenceFormatMessage = "Invalid package assembly reference format {TargetFrameworkMoniker(+TargetPlatformMoniker)=assembly1,assembly2,assembly3,...}";
+
+            Dictionary<NuGetFramework, IEnumerable<string>> packageAssemblyReferencesDict = new(argumentResult.Tokens.Count);
             foreach (Token token in argumentResult.Tokens)
             {
                 string[] parts = token.Value.Split('=');
                 if (parts.Length != 2)
                 {
-                    argumentResult.ErrorMessage = "Invalid package assembly reference format {tfm=assembly1,assembly2,assembly3,...}";
+                    argumentResult.ErrorMessage = invalidPackageAssemblyReferenceFormatMessage;
                     continue;
                 }
 
-                string tfm = parts[0];
-                string[] assemblies = parts[1].Split(',');
+                string tfmInformation = parts[0];
+                string referencePath = parts[1];
 
-                if (args.TryGetValue(tfm, out _))
+                string[] tfmInformationParts = tfmInformation.Split('+');
+                if (tfmInformationParts.Length < 1 || tfmInformationParts.Length > 2)
                 {
-                    argumentResult.ErrorMessage = $"Package assembly references for tfm '{tfm}' are already provided.";
+                    argumentResult.ErrorMessage = invalidPackageAssemblyReferenceFormatMessage;
+                }
+
+                string targetFrameworkMoniker = tfmInformationParts[0];
+                string targetPlatformMoniker = tfmInformationParts.Length == 2 ?
+                    tfmInformationParts[1] :
+                    string.Empty;
+
+                // The TPM is null when the assembly doesn't target a platform.
+                if (targetFrameworkMoniker == string.Empty || referencePath == string.Empty)
+                    continue;
+
+                NuGetFramework nuGetFramework = NuGetFramework.ParseComponents(targetFrameworkMoniker, targetPlatformMoniker);
+                // Skip duplicate frameworks which could be passed in when using TFM aliases.
+                if (packageAssemblyReferencesDict.ContainsKey(nuGetFramework))
+                {
                     continue;
                 }
 
-                args.Add(tfm, assemblies);
+                string[] references = referencePath.Split(',');
+                packageAssemblyReferencesDict.Add(nuGetFramework, references);
             }
 
-            return args;
+            return packageAssemblyReferencesDict;
         }
     }
 }

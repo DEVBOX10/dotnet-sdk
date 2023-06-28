@@ -17,10 +17,10 @@ namespace Microsoft.DotNet.PackageValidation.Validators
     /// </summary>
     public class CompatibleFrameworkInPackageValidator : IPackageValidator
     {
-        private readonly ICompatibilityLogger _log;
+        private readonly ISuppressableLog _log;
         private readonly IApiCompatRunner _apiCompatRunner;
 
-        public CompatibleFrameworkInPackageValidator(ICompatibilityLogger log,
+        public CompatibleFrameworkInPackageValidator(ISuppressableLog log,
             IApiCompatRunner apiCompatRunner)
         {
             _log = log;
@@ -30,7 +30,7 @@ namespace Microsoft.DotNet.PackageValidation.Validators
         /// <summary>
         /// Validates that the compatible frameworks have compatible surface area.
         /// </summary>
-        /// <param name="options">The options to configure the validator.</param>
+        /// <param name="options"><see cref="PackageValidatorOption"/> to configure the compatible framework in package validation.</param>
         public void Validate(PackageValidatorOption options)
         {
             ApiCompatRunnerOptions apiCompatOptions = new(options.EnableStrictMode);

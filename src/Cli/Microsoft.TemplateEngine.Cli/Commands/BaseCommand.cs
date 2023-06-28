@@ -1,6 +1,5 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
 using System.CommandLine.Completions;
@@ -39,12 +38,14 @@ namespace Microsoft.TemplateEngine.Cli.Commands
 
         protected IEngineEnvironmentSettings CreateEnvironmentSettings(GlobalArgs args, ParseResult parseResult)
         {
-            IEngineEnvironmentSettings environmentSettings = new EngineEnvironmentSettings(
-                _hostBuilder(parseResult),
-                settingsLocation: args.DebugCustomSettingsLocation,
+            ITemplateEngineHost host = _hostBuilder(parseResult);
+            IEnvironment environment = new CliEnvironment();
+
+            return new EngineEnvironmentSettings(
+                host,
                 virtualizeSettings: args.DebugVirtualizeSettings,
-                environment: new CliEnvironment());
-            return environmentSettings;
+                environment: environment,
+                pathInfo: new CliPathInfo(host, environment, args.DebugCustomSettingsLocation));
         }
     }
 

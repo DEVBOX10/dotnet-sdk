@@ -1,6 +1,5 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -22,7 +21,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tool
 
             var compressionLevelOption = new Option<CompressionLevel>(
                 "-c",
-                getDefaultValue: () => CompressionLevel.SmallestSize,
+                defaultValueFactory: () => CompressionLevel.SmallestSize,
                 description: "System.IO.Compression.CompressionLevel for the Brotli compression algorithm.");
             var sourcesOption = new Option<List<string>>(
                 "-s",
@@ -46,9 +45,9 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tool
             brotli.SetHandler((InvocationContext context) =>
             {
                 var parseResults = context.ParseResult;
-                var c = parseResults.GetValueForOption(compressionLevelOption);
-                var s = parseResults.GetValueForOption(sourcesOption);
-                var o = parseResults.GetValueForOption(outputsOption);
+                var c = parseResults.GetValue(compressionLevelOption);
+                var s = parseResults.GetValue(sourcesOption);
+                var o = parseResults.GetValue(outputsOption);
 
                 Parallel.For(0, s.Count, i =>
                 {

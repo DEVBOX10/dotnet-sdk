@@ -1,5 +1,5 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.CommandLine;
@@ -11,6 +11,7 @@ using Microsoft.Build.Evaluation;
 using Microsoft.DotNet.Cli.Utils;
 using Microsoft.DotNet.Tools;
 using static System.Array;
+using System.Collections.Generic;
 
 namespace Microsoft.DotNet.Cli
 {
@@ -19,7 +20,7 @@ namespace Microsoft.DotNet.Cli
 
         private static CompletionItem ToCompletionItem (string s) => new CompletionItem(s);
 
-        public static CompletionDelegate TargetFrameworksFromProjectFile =>
+        public static Func<CompletionContext, IEnumerable<CompletionItem>> TargetFrameworksFromProjectFile =>
             (_context) =>
             {
                 try
@@ -35,7 +36,7 @@ namespace Microsoft.DotNet.Cli
         private static void Report(Exception e) =>
             Reporter.Verbose.WriteLine($"Exception occurred while getting completions: {e}");
 
-        public static CompletionDelegate RunTimesFromProjectFile =>
+        public static Func<CompletionContext, IEnumerable<CompletionItem>> RunTimesFromProjectFile =>
             (_context) =>
             {
                 try
@@ -48,7 +49,7 @@ namespace Microsoft.DotNet.Cli
                 }
             };
 
-        public static CompletionDelegate ProjectReferencesFromProjectFile =>
+        public static Func<CompletionContext, IEnumerable<CompletionItem>> ProjectReferencesFromProjectFile =>
             (_context) =>
             {
                 try
@@ -61,7 +62,7 @@ namespace Microsoft.DotNet.Cli
                 }
             };
 
-        public static CompletionDelegate ConfigurationsFromProjectFileOrDefaults => 
+        public static Func<CompletionContext, IEnumerable<CompletionItem>> ConfigurationsFromProjectFileOrDefaults => 
             (_context) =>
             {
                 try

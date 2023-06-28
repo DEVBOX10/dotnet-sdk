@@ -1,5 +1,5 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
 using System.CommandLine.Parsing;
@@ -46,10 +46,10 @@ namespace Microsoft.DotNet.Cli
 
         public static RestoreActionConfig ToRestoreActionConfig(this ParseResult parseResult)
         {
-            return new RestoreActionConfig(DisableParallel: parseResult.GetValueForOption(DisableParallelOption),
-                NoCache: parseResult.GetValueForOption(NoCacheOption),
-                IgnoreFailedSources: parseResult.GetValueForOption(IgnoreFailedSourcesOption),
-                Interactive: parseResult.GetValueForOption(InteractiveRestoreOption));
+            return new RestoreActionConfig(DisableParallel: parseResult.GetValue(DisableParallelOption),
+                NoCache: parseResult.GetValue(NoCacheOption),
+                IgnoreFailedSources: parseResult.GetValue(IgnoreFailedSourcesOption),
+                Interactive: parseResult.GetValue(InteractiveRestoreOption));
         }
 
         public static void AddWorkloadCommandNuGetRestoreActionConfigOptions(this Command command, bool Hide = false)

@@ -1,5 +1,5 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
@@ -62,9 +62,9 @@ namespace Microsoft.DotNet.Tools.Tool.Restore
             _reporter = reporter ?? Reporter.Output;
             _errorReporter = reporter ?? Reporter.Error;
 
-            _configFilePath = result.GetValueForOption(ToolRestoreCommandParser.ConfigOption);
-            _sources = result.GetValueForOption(ToolRestoreCommandParser.AddSourceOption);
-            _verbosity = Enum.GetName(result.GetValueForOption(ToolRestoreCommandParser.VerbosityOption));
+            _configFilePath = result.GetValue(ToolRestoreCommandParser.ConfigOption);
+            _sources = result.GetValue(ToolRestoreCommandParser.AddSourceOption);
+            _verbosity = Enum.GetName(result.GetValue(ToolRestoreCommandParser.VerbosityOption));
         }
 
         public override int Execute()
@@ -245,7 +245,7 @@ namespace Microsoft.DotNet.Tools.Tool.Restore
 
         private FilePath? GetCustomManifestFileLocation()
         {
-            string customFile = _parseResult.GetValueForOption(ToolRestoreCommandParser.ToolManifestOption);
+            string customFile = _parseResult.GetValue(ToolRestoreCommandParser.ToolManifestOption);
             FilePath? customManifestFileLocation;
             if (!string.IsNullOrEmpty(customFile))
             {

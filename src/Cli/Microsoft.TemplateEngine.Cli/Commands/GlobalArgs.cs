@@ -1,6 +1,5 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
 using System.CommandLine.Parsing;
@@ -11,12 +10,12 @@ namespace Microsoft.TemplateEngine.Cli.Commands
     {
         public GlobalArgs(BaseCommand command, ParseResult parseResult)
         {
-            DebugCustomSettingsLocation = parseResult.GetValueForOption(NewCommand.DebugCustomSettingsLocationOption);
-            DebugVirtualizeSettings = parseResult.GetValueForOption(NewCommand.DebugVirtualizeSettingsOption);
-            DebugAttach = parseResult.GetValueForOption(NewCommand.DebugAttachOption);
-            DebugReinit = parseResult.GetValueForOption(NewCommand.DebugReinitOption);
-            DebugRebuildCache = parseResult.GetValueForOption(NewCommand.DebugRebuildCacheOption);
-            DebugShowConfig = parseResult.GetValueForOption(NewCommand.DebugShowConfigOption);
+            DebugCustomSettingsLocation = parseResult.GetValue(NewCommand.DebugCustomSettingsLocationOption);
+            DebugVirtualizeSettings = parseResult.GetValue(NewCommand.DebugVirtualizeSettingsOption);
+            DebugAttach = parseResult.GetValue(NewCommand.DebugAttachOption);
+            DebugReinit = parseResult.GetValue(NewCommand.DebugReinitOption);
+            DebugRebuildCache = parseResult.GetValue(NewCommand.DebugRebuildCacheOption);
+            DebugShowConfig = parseResult.GetValue(NewCommand.DebugShowConfigOption);
             ParseResult = parseResult;
             Command = command;
             RootCommand = GetNewCommandFromParseResult(parseResult);
@@ -53,7 +52,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
 
         protected static (bool, IReadOnlyList<string>?) ParseTabularOutputSettings(ITabularOutputCommand command, ParseResult parseResult)
         {
-            return (parseResult.GetValueForOption(command.ColumnsAllOption), parseResult.GetValueForOption(command.ColumnsOption));
+            return (parseResult.GetValue(command.ColumnsAllOption), parseResult.GetValue(command.ColumnsOption));
         }
 
         /// <summary>
