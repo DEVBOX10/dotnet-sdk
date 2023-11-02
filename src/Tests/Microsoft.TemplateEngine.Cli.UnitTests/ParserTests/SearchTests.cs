@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using Microsoft.TemplateEngine.Cli.Commands;
 using Microsoft.TemplateEngine.TestHelper;
 
@@ -163,8 +162,8 @@ namespace Microsoft.TemplateEngine.Cli.UnitTests.ParserTests
         [Theory]
         [InlineData("new --interactive search source", "'--interactive'")]
         [InlineData("new --interactive --search source", "'--interactive'")]
-        [InlineData("new foo bar --search source", "'foo'")] //only first error is added
-        [InlineData("new foo bar search source", "'foo'")] //only first error is added
+        [InlineData("new foo bar --search source", "'foo'|'bar'")]
+        [InlineData("new foo bar search source", "'foo'|'bar'")]
         public void Search_HandleParseErrors(string command, string expectedInvalidTokens)
         {
             ICliTemplateEngineHost host = CliTestHostFactory.GetVirtualHost(additionalComponents: BuiltInTemplatePackagesProviderFactory.GetComponents(RepoTemplatePackages));
@@ -245,13 +244,13 @@ namespace Microsoft.TemplateEngine.Cli.UnitTests.ParserTests
         {
             ICliTemplateEngineHost host = CliTestHostFactory.GetVirtualHost(additionalComponents: BuiltInTemplatePackagesProviderFactory.GetComponents(RepoTemplatePackages));
             NewCommand myCommand = (NewCommand)NewCommandFactory.Create("new", _ => host);
-            Command rootCommand = new("dotnet")
+            CliCommand rootCommand = new("dotnet")
             {
                 myCommand
             };
 
             ParseResult parseResult = rootCommand.Parse("dotnet new search template");
-            Assert.Equal("dotnet new search my-template", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(SearchCommand.NameArgument, "my-template"));
+            Assert.Equal("dotnet new search my-template", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(BaseSearchCommand.NameArgument, "my-template"));
         }
 
         [Fact]
@@ -259,13 +258,13 @@ namespace Microsoft.TemplateEngine.Cli.UnitTests.ParserTests
         {
             ICliTemplateEngineHost host = CliTestHostFactory.GetVirtualHost(additionalComponents: BuiltInTemplatePackagesProviderFactory.GetComponents(RepoTemplatePackages));
             NewCommand myCommand = (NewCommand)NewCommandFactory.Create("new", _ => host);
-            Command rootCommand = new("dotnet")
+            CliCommand rootCommand = new("dotnet")
             {
                 myCommand
             };
 
             ParseResult parseResult = rootCommand.Parse("dotnet new search template");
-            Assert.Equal("dotnet new search [<template-name>]", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(SearchCommand.NameArgument));
+            Assert.Equal("dotnet new search [<template-name>]", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(BaseSearchCommand.NameArgument));
         }
 
         [Fact]
@@ -273,13 +272,13 @@ namespace Microsoft.TemplateEngine.Cli.UnitTests.ParserTests
         {
             ICliTemplateEngineHost host = CliTestHostFactory.GetVirtualHost(additionalComponents: BuiltInTemplatePackagesProviderFactory.GetComponents(RepoTemplatePackages));
             NewCommand myCommand = (NewCommand)NewCommandFactory.Create("new", _ => host);
-            Command rootCommand = new("dotnet")
+            CliCommand rootCommand = new("dotnet")
             {
                 myCommand
             };
 
             ParseResult parseResult = rootCommand.Parse("dotnet new search template");
-            Assert.Equal("dotnet new search [<template-name>] --author Microsoft", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(SearchCommand.NameArgument).WithOption(SharedOptionsFactory.CreateAuthorOption(), "Microsoft"));
+            Assert.Equal("dotnet new search [<template-name>] --author Microsoft", Example.For<NewCommand>(parseResult).WithSubcommand<SearchCommand>().WithArgument(BaseSearchCommand.NameArgument).WithOption(SharedOptionsFactory.CreateAuthorOption(), "Microsoft"));
         }
     }
 }

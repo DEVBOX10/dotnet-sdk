@@ -13,7 +13,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
     {
         private readonly TemplateCommand _templateCommand;
         private readonly ParseResult _parseResult;
-        private List<TemplateOptionResult> _parametersInfo = new List<TemplateOptionResult>();
+        private List<TemplateOptionResult> _parametersInfo = new();
 
         private TemplateResult(TemplateCommand templateCommand, ParseResult parseResult)
         {
@@ -39,21 +39,23 @@ namespace Microsoft.TemplateEngine.Cli.Commands
 
         internal static TemplateResult FromParseResult(TemplateCommand templateCommand, ParseResult parseResult)
         {
-            TemplateResult result = new TemplateResult(templateCommand, parseResult);
-            result.IsLanguageMatch = templateCommand.LanguageOption == null || !parseResult.HasErrorFor(templateCommand.LanguageOption);
-            result.IsTypeMatch = templateCommand.TypeOption == null || !parseResult.HasErrorFor(templateCommand.TypeOption);
-            result.IsBaselineMatch = templateCommand.BaselineOption == null || !parseResult.HasErrorFor(templateCommand.BaselineOption);
+            TemplateResult result = new(templateCommand, parseResult)
+            {
+                IsLanguageMatch = templateCommand.LanguageOption == null || !parseResult.HasErrorFor(templateCommand.LanguageOption, out _),
+                IsTypeMatch = templateCommand.TypeOption == null || !parseResult.HasErrorFor(templateCommand.TypeOption, out _),
+                IsBaselineMatch = templateCommand.BaselineOption == null || !parseResult.HasErrorFor(templateCommand.BaselineOption, out _)
+            };
 
             if (templateCommand.LanguageOption != null && result.IsTemplateMatch)
             {
-                result.Language = parseResult.FindResultFor(templateCommand.LanguageOption);
+                result.Language = parseResult.GetResult(templateCommand.LanguageOption);
             }
 
             foreach (var option in templateCommand.TemplateOptions)
             {
-                if (parseResult.HasErrorFor(option.Value.Option))
+                if (parseResult.HasErrorFor(option.Value.Option, out var parseError))
                 {
-                    result._parametersInfo.Add(InvalidTemplateOptionResult.FromParseResult(option.Value, parseResult));
+                    result._parametersInfo.Add(InvalidTemplateOptionResult.FromParseError(option.Value, parseResult, parseError));
                 }
                 else
                 {

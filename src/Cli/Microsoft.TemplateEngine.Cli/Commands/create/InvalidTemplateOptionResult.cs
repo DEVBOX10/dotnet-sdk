@@ -3,7 +3,6 @@
 
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using System.Text;
 using Microsoft.TemplateEngine.Abstractions;
 
 namespace Microsoft.TemplateEngine.Cli.Commands
@@ -79,17 +78,12 @@ namespace Microsoft.TemplateEngine.Cli.Commands
 
         public bool Equals(InvalidTemplateOptionResult? other)
         {
-            return this.Equals(other as object);
+            return Equals(other as object);
         }
 
-        internal static new InvalidTemplateOptionResult FromParseResult(TemplateOption option, ParseResult parseResult)
+        internal static InvalidTemplateOptionResult FromParseError(TemplateOption option, ParseResult parseResult, ParseError error)
         {
-            if (!parseResult.HasErrorFor(option.Option))
-            {
-                throw new ArgumentException($"{nameof(option)} does not have an error in {nameof(parseResult)}");
-            }
-
-            OptionResult? optionResult = parseResult.FindResultFor(option.Option);
+            OptionResult? optionResult = parseResult.GetResult(option.Option);
             if (optionResult == null)
             {
                 //option is not specified
@@ -102,30 +96,12 @@ namespace Microsoft.TemplateEngine.Cli.Commands
                 optionValue = string.Join(", ", optionResult.Tokens.Select(t => t.Value));
             }
 
-            string? errorMessage = null;
-            if (!string.IsNullOrWhiteSpace(optionResult.ErrorMessage))
-            {
-                errorMessage = optionResult.ErrorMessage;
-            }
-            else
-            {
-                foreach (var result in optionResult.Children)
-                {
-                    if (string.IsNullOrWhiteSpace(result.ErrorMessage))
-                    {
-                        continue;
-                    }
-                    errorMessage = result.ErrorMessage;
-                    break;
-                }
-            }
-
             return new InvalidTemplateOptionResult(
                     option,
                     Kind.InvalidValue,
-                    optionResult.Token?.Value ?? string.Empty,
+                    optionResult.IdentifierToken?.Value ?? string.Empty,
                     optionValue,
-                    errorMessage);
+                    error.Message);
         }
 
         /// <summary>
@@ -139,7 +115,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
                 throw new NotSupportedException($"Method is not invokable when {nameof(TemplateOption)} is null");
             }
 
-            StringBuilder error = new StringBuilder();
+            StringBuilder error = new();
             error.AppendFormat(LocalizableStrings.InvalidParameterDetail, InputFormat, SpecifiedValue);
             ErrorMessage = AppendAllowedValues(error, GetValidValuesForChoiceParameter(templates, TemplateOption.TemplateParameter)).ToString();
         }
@@ -152,7 +128,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
             IEnumerable<TemplateResult> templates,
             CliTemplateParameter parameter)
         {
-            Dictionary<string, ParameterChoice> validChoices = new Dictionary<string, ParameterChoice>();
+            Dictionary<string, ParameterChoice> validChoices = new();
             foreach (CliTemplateInfo template in templates.Select(template => template.TemplateInfo))
             {
                 if (template.CliParameters.TryGetValue(parameter.Name, out CliTemplateParameter? param))

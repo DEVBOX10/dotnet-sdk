@@ -9,6 +9,8 @@ set DOTNET_ROOT=%HELIX_CORRELATION_PAYLOAD%\d
 set PATH=%DOTNET_ROOT%;%PATH%
 set DOTNET_MULTILEVEL_LOOKUP=0
 set TestFullMSBuild=%1
+set DOTNET_ROLL_FORWARD=Major
+set DOTNET_ROLL_FORWARD_TO_PRERELEASE=1
 
 set TestExecutionDirectory=%CD%\testExecutionDirectory
 mkdir %TestExecutionDirectory%
@@ -24,6 +26,10 @@ set TestExecutionDirectory=%TEMP%\dotnetSdkTests\%RandomDirectoryName%
 set DOTNET_CLI_HOME=%TestExecutionDirectory%\.dotnet
 mkdir %TestExecutionDirectory%
 robocopy %HELIX_CORRELATION_PAYLOAD%\t\TestExecutionDirectoryFiles %TestExecutionDirectory% /s
+
+set DOTNET_SDK_TEST_EXECUTION_DIRECTORY=%TestExecutionDirectory%
+set DOTNET_SDK_TEST_MSBUILDSDKRESOLVER_FOLDER=%HELIX_CORRELATION_PAYLOAD%\r
+set DOTNET_SDK_TEST_ASSETS_DIRECTORY=%TestExecutionDirectory%\assets
 
 REM call dotnet new so the first run message doesn't interfere with the first test
 dotnet new --debug:ephemeral-hive

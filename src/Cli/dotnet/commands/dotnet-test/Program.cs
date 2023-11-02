@@ -1,12 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.IO;
-using System.Linq;
 
 using Microsoft.DotNet.Cli;
 using Microsoft.DotNet.Cli.Utils;
@@ -110,7 +105,7 @@ namespace Microsoft.DotNet.Tools.Test
 
         public static TestCommand FromArgs(string[] args, string testSessionCorrelationId = null, string msbuildPath = null)
         {
-            var parser = Microsoft.DotNet.Cli.Parser.Instance;
+            var parser = Parser.Instance;
             var parseResult = parser.ParseFrom("dotnet test", args);
 
             // settings parameters are after -- (including --), these should not be considered by the parser
@@ -119,7 +114,7 @@ namespace Microsoft.DotNet.Tools.Test
             {
                 testSessionCorrelationId = $"{Environment.ProcessId}_{Guid.NewGuid()}";
             }
-            
+
             return FromParseResult(parseResult, settings, testSessionCorrelationId, msbuildPath);
         }
 
@@ -146,7 +141,7 @@ namespace Microsoft.DotNet.Tools.Test
                 result.OptionValuesToBeForwarded(TestCommandParser.GetCommand()) // all msbuild-recognized tokens
                     .Concat(unMatchedNonSettingsArgs); // all tokens that the test-parser doesn't explicitly track (minus the settings tokens)
 
-            VSTestTrace.SafeWriteTrace(() => $"MSBuild args from forwarded options: {String.Join(", ", parsedArgs)}");
+            VSTestTrace.SafeWriteTrace(() => $"MSBuild args from forwarded options: {string.Join(", ", parsedArgs)}");
             msbuildArgs.AddRange(parsedArgs);
 
             if (settings.Any())
@@ -175,7 +170,7 @@ namespace Microsoft.DotNet.Tools.Test
                 msbuildArgs.Add($"-property:VSTestSessionCorrelationId={testSessionCorrelationId}");
             }
 
-            bool noRestore = result.HasOption(TestCommandParser.NoRestoreOption) || result.HasOption(TestCommandParser.NoBuildOption);
+            bool noRestore = (result.GetResult(TestCommandParser.NoRestoreOption) ?? result.GetResult(TestCommandParser.NoBuildOption)) is not null;
 
             TestCommand testCommand = new(
                 msbuildArgs,
@@ -217,7 +212,7 @@ namespace Microsoft.DotNet.Tools.Test
 
             var artifactsPostProcessArgs = new List<string> { "--artifactsProcessingMode-postprocess", $"--testSessionCorrelationId:{testSessionCorrelationId}" };
 
-            if (parseResult.HasOption(TestCommandParser.DiagOption))
+            if (parseResult.GetResult(TestCommandParser.DiagOption) is not null)
             {
                 artifactsPostProcessArgs.Add($"--diag:{parseResult.GetValue(TestCommandParser.DiagOption)}");
             }
@@ -259,9 +254,9 @@ namespace Microsoft.DotNet.Tools.Test
 
         private static void SetEnvironmentVariablesFromParameters(TestCommand testCommand, ParseResult parseResult)
         {
-            Option<IEnumerable<string>> option = TestCommandParser.EnvOption;
+            CliOption<IEnumerable<string>> option = TestCommandParser.EnvOption;
 
-            if (!parseResult.HasOption(option))
+            if (parseResult.GetResult(option) is null)
             {
                 return;
             }
